@@ -1,0 +1,19 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "ignore": {
+    "files": ["functions/_middleware.js"]
+  },
+  "rules": {
+    "react-doctor/no-giant-component": "off",
+    "react-doctor/prefer-useReducer": "off",
+    "react-doctor/no-fetch-in-effect": "off",
+    "react-doctor/async-await-in-loop": "off",
+    "react-doctor/no-cascading-set-state": "off",
+    "react-doctor/no-event-handler": "off",
+    "react-doctor/js-set-map-lookups": "off",
+    "react-doctor/no-derived-state": "off",
+    "react-doctor/use-lazy-motion": "off",
+    "react-doctor/prefer-html-dialog": "off",
+    "react-doctor/no-many-boolean-props": "off"
+  }
+}

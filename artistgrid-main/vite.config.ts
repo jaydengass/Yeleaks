@@ -1,0 +1,104 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import { VitePWA } from "vite-plugin-pwa";
+
+export default defineConfig({
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      injectRegister: "auto",
+      manifest: {
+        name: "ArtistGrid",
+        short_name: "ArtistGrid",
+        description: "Discover and track unreleased music from your favorite artists.",
+        theme_color: "#000000",
+        background_color: "#000000",
+        display: "standalone",
+        scope: "/",
+        start_url: "/",
+        icons: [
+          {
+            src: "/icons/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "/icons/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "/icons/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globIgnores: ["coverage/**"],
+        clientsClaim: true,
+        skipWaiting: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/trackerapi\.artistgrid\.cx\//,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "tracker-api",
+              expiration: { maxEntries: 100 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/artists\.artistgrid\.cx\//,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "artists-csv",
+              expiration: { maxEntries: 5 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/assets\.artistgrid\.cx\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "artist-images",
+              expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: ({ request, url }) =>
+              request.mode === "navigate" && !url.pathname.startsWith("/coverage"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "app-shell",
+              expiration: { maxEntries: 10 },
+            },
+          },
+        ],
+      },
+    }),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "."),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "radix-vendor": [
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-progress",
+            "@radix-ui/react-slot",
+            "@radix-ui/react-toast",
+          ],
+          "motion-vendor": ["framer-motion"],
+        },
+      },
+    },
+  },
+});

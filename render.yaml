@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: yeleaks-api
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: node dist/server.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        value: https://yeleaks.surge.sh

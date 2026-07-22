@@ -1,0 +1,6 @@
+{
+  "name": "YELEAKS",
+  "description": "YELEAKS high-contrast streetwear feed showing posts collected from the scraper worker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "YELEAKS",
+  "short_name": "YELEAKS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#fafafa",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/Icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
