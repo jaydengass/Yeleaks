@@ -189,8 +189,9 @@ export default function App() {
       const tracks = era.tracks || [];
       if (tracks.length === 0) return false;
     return tracks.some((track: any) => {
-      const trackName = (track.name?.title || track.name?.raw || '').toLowerCase();
-      return trackName.includes(query);
+      const trackTitle = (track.name?.title || '').toLowerCase();
+      const trackAlt = (track.name?.raw || '').toLowerCase();
+      return trackTitle.includes(query) || trackAlt.includes(query);
     });
     });
   }, [kanyeData, debouncedSearchQuery]);
@@ -2338,12 +2339,13 @@ export default function App() {
                                 >
                                    {(era.tracks || [])
                                        .map((track: any, originalIndex: number) => ({ track, originalIndex }))
-                                       .filter(({ track }: { track: any }) => {
-                                        const trackName = (track.name?.title || track.name?.raw || '').toLowerCase();
-                                        const query = debouncedSearchQuery.trim().toLowerCase();
-                                        if (query === "") return true;
-                                        return trackName.includes(query);
-                                       })
+                                        .filter(({ track }: { track: any }) => {
+                                         const trackTitle = (track.name?.title || '').toLowerCase();
+                                         const trackAlt = (track.name?.raw || '').toLowerCase();
+                                         const query = debouncedSearchQuery.trim().toLowerCase();
+                                         if (query === "") return true;
+                                         return trackTitle.includes(query) || trackAlt.includes(query);
+                                        })
                                        .slice(0, getVisibleTrackCount(eraKey))
                                           .map(({ track, originalIndex }: { track: any, originalIndex: number }) => {
                                           const trackKey = `${era.name || 'era'}-${originalIndex}`;
@@ -2385,29 +2387,29 @@ export default function App() {
                                             {originalIndex + 1}
                                           </span>
                                           
-                                            <span className={`ml-3 text-sm font-mono truncate text-neutral-700`}>
-                                              {renderExplicitTitle(trackDisplayTitle)}
+                                            <span className={`flex-1 ml-3 text-sm font-mono truncate text-neutral-700`}>
+                                                {renderExplicitTitle(trackDisplayTitle)}
                                             </span>
-                                          {trackQuality && (
-                                            <span className={`ml-auto text-[12px] font-mono uppercase tracking-wider text-neutral-500`}>
-                                              {trackQuality}
-                                            </span>
-                                          )}
                                             <button
-                                              onClick={async (e) => {
-                                                e.stopPropagation();
-                                                let url = track.audioUrl || track.links?.[0]?.url || '';
-                                                if (!url) return;
-                                                url = await resolvePlayableUrl(url);
-                                                if (url) {
-                                                   handleExportTrack(url, trackDisplayTitle, getFormatFromUrl(url));
-                                               }
-                                             }}
-                                             className={`ml-2 p-1.5 transition-colors download-subtle text-neutral-400`}
-                                            title="Download Track"
-                                          >
-                                            <Download size={15} />
-                                          </button>
+                                               onClick={async (e) => {
+                                                 e.stopPropagation();
+                                                 let url = track.audioUrl || track.links?.[0]?.url || '';
+                                                 if (!url) return;
+                                                 url = await resolvePlayableUrl(url);
+                                                 if (url) {
+                                                    handleExportTrack(url, trackDisplayTitle, getFormatFromUrl(url));
+                                                }
+                                              }}
+                                               className={`p-1.5 transition-colors download-subtle text-neutral-400`}
+                                             title="Download Track"
+                                           >
+                                             <Download size={15} />
+                                           </button>
+                                           {trackQuality && (
+                                             <span className="text-[12px] font-mono uppercase tracking-wider text-neutral-500">
+                                               {trackQuality}
+                                             </span>
+                                           )}
                                       </div>
                                    );
                                  })}
