@@ -2387,10 +2387,15 @@ export default function App() {
                                             {originalIndex + 1}
                                           </span>
                                           
-                                            <span className={`flex-1 ml-3 text-sm font-mono truncate text-neutral-700`}>
-                                                {renderExplicitTitle(trackDisplayTitle)}
-                                            </span>
-                                            <button
+                                             <span className={`flex-1 ml-3 text-sm font-mono truncate text-neutral-700`}>
+                                                 {renderExplicitTitle(trackDisplayTitle)}
+                                             </span>
+                                            {trackQuality && (
+                                              <span className="text-[12px] font-mono uppercase tracking-wider text-neutral-500">
+                                                {trackQuality}
+                                              </span>
+                                            )}
+                                             <button
                                                onClick={async (e) => {
                                                  e.stopPropagation();
                                                  let url = track.audioUrl || track.links?.[0]?.url || '';
@@ -2400,26 +2405,21 @@ export default function App() {
                                                     handleExportTrack(url, trackDisplayTitle, getFormatFromUrl(url));
                                                 }
                                               }}
-                                               className={`p-1.5 transition-colors download-subtle text-neutral-400`}
+                                                className={`ml-auto p-1.5 transition-colors download-subtle text-neutral-400`}
                                              title="Download Track"
                                            >
-                                             <Download size={15} />
-                                           </button>
-                                           {trackQuality && (
-                                             <span className="text-[12px] font-mono uppercase tracking-wider text-neutral-500">
-                                               {trackQuality}
-                                             </span>
-                                           )}
-                                      </div>
-                                   );
-                                 })}
-                             </div>
-                          </div>
-                      </div>
-                    );
-                  });
-                })()
-              ) : (
+                                              <Download size={15} />
+                                            </button>
+                                       </div>
+                                    );
+                                  })}
+                              </div>
+                           </div>
+                       </div>
+                     );
+                   });
+                 })()
+               ) : (
                <div className="text-center py-24 bg-white border border-neutral-200 rounded-xl p-10 shadow-sm">
                  <p className="font-mono text-xs tracking-widest text-neutral-400 uppercase">
                    NO TRACKER DATA
