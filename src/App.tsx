@@ -176,10 +176,11 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<'yeleaks' | 'trackerhub'>('yeleaks');
   const [showNotification, setShowNotification] = useState<boolean>(false);
   const [notificationData, setNotificationData] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<{current: number, total: number} | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<{current: number, total: number, failed: number} | null>(null);
   const [kanyeData, setKanyeData] = useState<any | null>(null);
   const [kanyeLoading, setKanyeLoading] = useState(false);
   const trackerCacheRef = useRef<any | null>(null);
+  const trackerHubTempProjectRef = useRef<any | null>(null);
   const filteredTrackerEras = useMemo(() => {
     if (!kanyeData?.eras) return [];
     const query = debouncedSearchQuery.trim().toLowerCase();
@@ -187,13 +188,14 @@ export default function App() {
     return kanyeData.eras.filter((era: any) => {
       const tracks = era.tracks || [];
       if (tracks.length === 0) return false;
-      return tracks.some((track: any) => {
-        const trackTitle = (track.name?.title || '').toLowerCase();
-        return trackTitle.includes(query);
-      });
+    return tracks.some((track: any) => {
+      const trackName = (track.name?.title || track.name?.raw || '').toLowerCase();
+      return trackName.includes(query);
+    });
     });
   }, [kanyeData, debouncedSearchQuery]);
   const [expandedEras, setExpandedEras] = useState<Set<string>>(new Set());
+  const [selectedTrackerTrackIds, setSelectedTrackerTrackIds] = useState<Set<string>>(new Set());
   const [hoveredTrackerTrack, setHoveredTrackerTrack] = useState<{eraKey: string, track: any, eraIndex: number, trackIndex: number, rect: DOMRect} | null>(null);
   const hoverTimeoutRef = useRef<number | null>(null);
   const notificationTimeoutRef = useRef<number | null>(null);
@@ -463,7 +465,7 @@ export default function App() {
   const [isLoop, setIsLoop] = useState<boolean>(false);
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
   const [contextMenuPos, setContextMenuPos] = useState<{x: number, y: number, trackId: string, projectId: string, trackUrl: string} | null>(null);
-  const [trackerContextMenuPos, setTrackerContextMenuPos] = useState<{x: number, y: number, trackUrl: string, trackTitle: string, trackFormat?: string} | null>(null);
+  const [trackerContextMenuPos, setTrackerContextMenuPos] = useState<{x: number, y: number, trackUrl: string, trackTitle: string, trackFormat?: string, era?: any, trackIndex?: number} | null>(null);
   const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
   const [visibleTrackCounts, setVisibleTrackCounts] = useState<Record<string, number>>({});
 
@@ -649,7 +651,14 @@ export default function App() {
   };
 
   const allProjects = useMemo(() => getCombinedProjects(), [remoteProjects]);
-  const activeProject = useMemo(() => allProjects.find(p => p.id === activeProjectId), [allProjects, activeProjectId]);
+  const activeProject = useMemo(() => {
+    const fromList = allProjects.find(p => p.id === activeProjectId);
+    if (fromList) return fromList;
+    if (activeProjectId && activeProjectId.startsWith('trackerhub-')) {
+      return trackerHubTempProjectRef.current;
+    }
+    return null;
+  }, [allProjects, activeProjectId]);
   
   const filteredProjects = useMemo(() => {
     const query = debouncedSearchQuery.trim().toLowerCase();
@@ -802,8 +811,6 @@ export default function App() {
     if (!isAudioReady) return;
     const audio = audioRef.current;
     if (!audio) return;
-
-    audio.pause();
 
     console.log("[YELEAKS] Audio effect running, isAudioReady:", isAudioReady, "activeProject:", !!activeProject, "activeProject?.metadata:", !!activeProject?.metadata);
 
@@ -1337,7 +1344,7 @@ export default function App() {
     }
   };
 
-  const downloadTracksAsZip = async (tracks: any[], zipName: string, onProgress?: (current: number, total: number) => void) => {
+  const downloadTracksAsZip = async (tracks: any[], zipName: string, onProgress?: (current: number, total: number, failed: number) => void) => {
     if (typeof (window as any).JSZip === 'undefined') {
       alert('JSZip library failed to load from CDN!');
       return;
@@ -1352,6 +1359,7 @@ export default function App() {
     const folder = zip.folder(zipName.replace('.zip', ''));
     
     let successCount = 0;
+    let failedCount = 0;
 
     const getTrackTitle = (track: any) => {
       if (typeof track.title === 'string' && track.title.trim()) return track.title;
@@ -1371,7 +1379,8 @@ export default function App() {
       const directUrl = track.audioUrl || track.links?.[0]?.url || '';
       if (!directUrl) {
         console.error('No audio URL for track:', getTrackTitle(track));
-        onProgress?.(i + 1, tracks.length);
+        failedCount++;
+        onProgress?.(i + 1, tracks.length, failedCount);
         continue;
       }
       
@@ -1390,13 +1399,14 @@ export default function App() {
         successCount++;
       } catch (err) {
         console.error('Failed to fetch track ' + getTrackTitle(track) + ':', err);
+        failedCount++;
       }
 
-      onProgress?.(i + 1, tracks.length);
+      onProgress?.(i + 1, tracks.length, failedCount);
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    if (successCount === 0) {
+    if (successCount === 0 && failedCount > 0) {
       alert('Could not download any tracks. All fetches failed.');
       return;
     }
@@ -1419,11 +1429,11 @@ export default function App() {
     }
   };
 
-  const handleExportTracks = async () => {
+  const handleExportTracks = async (projectId?: string) => {
     if (selectedTrackIds.length === 0) return;
     
-    const targetProjectId = contextMenuPos?.projectId || activeProjectId;
-    const project = allProjects.find(p => p.id === targetProjectId);
+    const targetProjectId = projectId || contextMenuPos?.projectId || activeProjectId;
+    const project = targetProjectId ? allProjects.find(p => p.id === targetProjectId) || (targetProjectId.startsWith('trackerhub-') ? trackerHubTempProjectRef.current : null) : null;
     if (!project || !project.metadata) return;
     
     const tracksToDownload = project.metadata.tracks.filter(t => 
@@ -1433,24 +1443,24 @@ export default function App() {
     if (tracksToDownload.length === 0) return;
     
     const zipName = `${project.metadata.title || project.title} (Selected).zip`;
-    setDownloadProgress({ current: 0, total: tracksToDownload.length });
-    await downloadTracksAsZip(tracksToDownload, zipName, (current, total) => {
-      setDownloadProgress({ current, total });
+    setDownloadProgress({ current: 0, total: tracksToDownload.length, failed: 0 });
+    await downloadTracksAsZip(tracksToDownload, zipName, (current, total, failed) => {
+      setDownloadProgress({ current, total, failed });
     });
     setDownloadProgress(null);
     
     setSelectedTrackIds([]);
   };
 
-  const handleExportProject = async () => {
-    const targetProjectId = contextMenuPos?.projectId || activeProjectId;
-    const project = allProjects.find(p => p.id === targetProjectId);
+  const handleExportProject = async (projectId?: string) => {
+    const targetProjectId = projectId || contextMenuPos?.projectId || activeProjectId;
+    const project = targetProjectId ? allProjects.find(p => p.id === targetProjectId) || (targetProjectId.startsWith('trackerhub-') ? trackerHubTempProjectRef.current : null) : null;
     if (!project || !project.metadata) return;
     
     const zipName = `${project.metadata.artist || 'Artist'} - ${project.metadata.title || project.title}.zip`;
-    setDownloadProgress({ current: 0, total: project.metadata.tracks.length });
-    await downloadTracksAsZip(project.metadata.tracks, zipName, (current, total) => {
-      setDownloadProgress({ current, total });
+    setDownloadProgress({ current: 0, total: project.metadata.tracks.length, failed: 0 });
+    await downloadTracksAsZip(project.metadata.tracks, zipName, (current, total, failed) => {
+      setDownloadProgress({ current, total, failed });
     });
     setDownloadProgress(null);
   };
@@ -1540,20 +1550,45 @@ export default function App() {
     return '';
   };
 
+  const getFormatFromUrl = (url: string) => {
+    if (!url) return 'mp3';
+    try {
+      const path = new URL(url).pathname.toLowerCase();
+      const match = path.match(/\.(mp3|wav|flac|m4a|aac|ogg|wma|alac|opus|weba)(\?|$)/);
+      if (match) return match[1];
+    } catch {}
+    return 'mp3';
+  };
+
   const handleTrackerTrackClick = async (era: any, trackIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!era) return;
+    
+    if (e.ctrlKey || e.metaKey) {
+      const trackKey = `${era.name || 'era'}-${trackIndex}`;
+      setSelectedTrackerTrackIds(prev => {
+        const next = new Set(prev);
+        if (next.has(trackKey)) {
+          next.delete(trackKey);
+        } else {
+          next.add(trackKey);
+        }
+        return next;
+      });
+      return;
+    }
+    
     const track = era.tracks[trackIndex];
     const rawUrl = getRawTrackerTrackUrl(track);
     const resolvedUrl = rawUrl ? await resolvePlayableUrl(rawUrl) : '';
     const playUrl = resolvedUrl || rawUrl;
     
-    if (!playUrl) {
-      console.warn('[TrackerHub] No playable URL found for track:', track.name?.title || track.name?.raw);
+    if (!playUrl || /youtube\.com\/|youtu\.be\//i.test(playUrl)) {
+      console.warn('[TrackerHub] Skipping non-playable track:', track.name?.title || track.name?.raw);
       return;
     }
 
-    const format = track.quality?.toLowerCase() || 'mp3';
+    const format = getFormatFromUrl(playUrl);
     const title = track.name?.title || track.name?.raw || `Track ${trackIndex + 1}`;
     const tempId = `trackerhub-${Date.now()}-${trackIndex}`;
     
@@ -1566,7 +1601,7 @@ export default function App() {
         date: t.file_date || t.leak_date || '',
         audioUrl: tRawUrl,
         rawUrl: tRawUrl,
-        format: t.quality?.toLowerCase() || 'mp3'
+        format: getFormatFromUrl(tRawUrl)
       };
     });
     
@@ -1588,6 +1623,8 @@ export default function App() {
         tracks: eraTracks
       }
     };
+
+    trackerHubTempProjectRef.current = tempProject;
 
     setRemoteProjects(prev => {
       const withoutOldTemps = prev.filter(p => !p.id.startsWith('trackerhub-'));
@@ -1611,7 +1648,9 @@ export default function App() {
       y: e.clientY, 
       trackUrl: url, 
       trackTitle: title,
-      trackFormat: format
+      trackFormat: format,
+      era,
+      trackIndex
     });
   };
 
@@ -1641,9 +1680,68 @@ export default function App() {
     setTrackerContextMenuPos(null);
   };
 
+  const handleExportTrackerEra = async (era: any) => {
+    const rawTracks = era.tracks || [];
+    if (rawTracks.length === 0) {
+      alert('No tracks in this era to download.');
+      return;
+    }
+    const tracks = await Promise.all(rawTracks.map(async (t: any, i: number) => {
+      const rawUrl = getRawTrackerTrackUrl(t) || t.audioUrl;
+      const resolvedUrl = rawUrl ? await resolvePlayableUrl(rawUrl) : '';
+      const finalUrl = resolvedUrl || rawUrl;
+      return {
+        num: i + 1,
+        title: t.name?.title || t.name?.raw || `Track ${i + 1}`,
+        audioUrl: finalUrl,
+        links: t.links,
+        format: getFormatFromUrl(finalUrl) || undefined,
+        quality: t.quality
+      };
+    }));
+    const zipName = `${era.name || 'era'}.zip`;
+    setDownloadProgress({ current: 0, total: tracks.length, failed: 0 });
+    await downloadTracksAsZip(tracks, zipName, (current, total, failed) => {
+      setDownloadProgress({ current, total, failed });
+    });
+    setDownloadProgress(null);
+  };
+
+  const handleExportTrackerTracks = async (era: any, trackIndices: number[]) => {
+    if (trackIndices.length === 0) return;
+    const rawTracks = era.tracks || [];
+    const tracks = await Promise.all(trackIndices.map(async (trackIndex, i) => {
+      const t = rawTracks[trackIndex];
+      if (!t) return null;
+      const rawUrl = getRawTrackerTrackUrl(t) || t.audioUrl;
+      const resolvedUrl = rawUrl ? await resolvePlayableUrl(rawUrl) : '';
+      const finalUrl = resolvedUrl || rawUrl;
+      return {
+        num: i + 1,
+        title: t.name?.title || t.name?.raw || `Track ${trackIndex + 1}`,
+        audioUrl: finalUrl,
+        links: t.links,
+        format: getFormatFromUrl(finalUrl) || undefined,
+        quality: t.quality
+      };
+    }));
+    const validTracks = tracks.filter(Boolean);
+    if (validTracks.length === 0) return;
+    const zipName = `${era.name || 'era'} (Selected).zip`;
+    setSelectedTrackerTrackIds(new Set());
+    setDownloadProgress({ current: 0, total: validTracks.length, failed: 0 });
+    await downloadTracksAsZip(validTracks, zipName, (current, total, failed) => {
+      setDownloadProgress({ current, total, failed });
+    });
+    setDownloadProgress(null);
+  };
+
   const handleDocumentClick = (e: MouseEvent) => {
     if (selectedTrackIds.length > 0) {
       setSelectedTrackIds([]);
+    }
+    if (selectedTrackerTrackIds.size > 0) {
+      setSelectedTrackerTrackIds(new Set());
     }
   };
 
@@ -1661,7 +1759,7 @@ export default function App() {
   return (
     <Fragment>
     <div 
-      className={`min-h-screen font-sans selection:bg-neutral-200 selection:text-black antialiased relative ${isDarkMode ? 'dark bg-[#0a0a0a] text-neutral-100' : 'bg-[#fafafa] text-neutral-900'}`}
+      className={`min-h-screen font-sans selection:bg-neutral-200 selection:text-black antialiased relative overflow-x-hidden ${isDarkMode ? 'dark bg-[#0a0a0a] text-neutral-100' : 'bg-[#fafafa] text-neutral-900'}`}
     >
       
       {showNotification && notificationData && (
@@ -1685,7 +1783,7 @@ export default function App() {
       {downloadProgress && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100]">
           <div className="px-6 py-3 rounded-lg border shadow-lg font-mono text-xs tracking-widest uppercase animate-in bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white">
-            Downloading {downloadProgress.current}/{downloadProgress.total}
+            Downloading {downloadProgress.current}/{downloadProgress.total}{downloadProgress.failed > 0 ? ` • Failed ${downloadProgress.failed}` : ''}
           </div>
         </div>
       )}
@@ -1693,10 +1791,10 @@ export default function App() {
       {activeSection === 'yeleaks' && (
         <div className="w-full px-4 py-16">
         
-        <header className="mb-12" style={{ position: "relative", width: "100%", minHeight: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 40px", boxSizing: "border-box", fontFamily: "IBM Plex Mono" }}>
+        <header className="mb-12" style={{ position: "relative", width: "100%", minHeight: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", boxSizing: "border-box", fontFamily: "IBM Plex Mono" }}>
           
           {/* Left side buttons */}
-            <div style={{ position: "absolute", left: "40px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "row", gap: "8px", alignItems: "center" }}>
+            <div style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "row", gap: "8px", alignItems: "center" }}>
             <a
               href="https://guns.lol/g4su"
               target="_blank"
@@ -1734,7 +1832,7 @@ export default function App() {
           </div>
 
           {/* Add Link on the right */}
-          <div style={{ position: "absolute", right: "40px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: "6px", width: "12rem" }}>
+          <div style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: "6px", width: "10rem" }}>
               <button
                 id="add-link-btn"
                 onClick={() => setShowAddDropdown(!showAddDropdown)}
@@ -1822,7 +1920,7 @@ export default function App() {
                            <button
                              onClick={(e) => {
                                e.stopPropagation();
-                               handleExportProject();
+                                handleExportProject(project.id);
                             }}
                             className="p-2 text-neutral-400 hover:text-black transition-colors cursor-pointer"
                             title="Download Project"
@@ -1966,12 +2064,13 @@ export default function App() {
               e.stopPropagation();
             }}
           >
-              {contextMenuPos.trackId.startsWith('project-') ? (
-                <button
-                  onClick={() => {
-                    handleExportProject();
-                    setContextMenuPos(null);
-                  }}
+               {contextMenuPos.trackId.startsWith('project-') ? (
+                 <button
+                   onClick={() => {
+                     const projectId = contextMenuPos.trackId.split('-').slice(0, -1).join('-');
+                     handleExportProject(projectId);
+                     setContextMenuPos(null);
+                   }}
                   className="context-menu-item w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors"
                 >
                   Export Project
@@ -2020,11 +2119,12 @@ export default function App() {
                    Export Track
                  </button>
                ) : (
-                 <button
-                   onClick={() => {
-                     handleExportTracks();
-                     setContextMenuPos(null);
-                   }}
+                  <button
+                    onClick={() => {
+                      const projectId = contextMenuPos.trackId.split('-').slice(0, -1).join('-');
+                      handleExportTracks(projectId);
+                      setContextMenuPos(null);
+                    }}
                    className="context-menu-item w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors"
                  >
                    Export Tracks({selectedTrackIds.length})
@@ -2034,35 +2134,62 @@ export default function App() {
            </div>
          )}
 
-         {trackerContextMenuPos && (
-          <div className="fixed inset-0 z-50">
-            <div
-              className="fixed inset-0"
-              onClick={() => setTrackerContextMenuPos(null)}
-            />
-            <div
-              className="fixed z-51 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[120px]"
-              style={{ left: trackerContextMenuPos.x, top: trackerContextMenuPos.y }}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              <button
-                onClick={handleTrackerExportTrack}
-                className="context-menu-item w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors"
-              >
-                Download Track
-              </button>
-            </div>
-          </div>
-        )}
+          {trackerContextMenuPos && (
+           <div className="fixed inset-0 z-50">
+             <div
+               className="fixed inset-0"
+               onClick={() => setTrackerContextMenuPos(null)}
+             />
+             <div
+               className="fixed z-51 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[120px]"
+               style={{ left: trackerContextMenuPos.x, top: trackerContextMenuPos.y }}
+               onClick={(e) => {
+                 e.stopPropagation();
+               }}
+               >
+                 {(() => {
+                   if (!trackerContextMenuPos?.era) return null;
+                   const eraPrefix = `${trackerContextMenuPos.era.name || 'era'}-`;
+                   const selectedInEra = Array.from(selectedTrackerTrackIds).filter(key => key.startsWith(eraPrefix)).length;
+                   if (selectedInEra > 1) {
+                     return (
+                       <button
+                         onClick={() => {
+                           const indices = Array.from(selectedTrackerTrackIds)
+                             .filter(key => key.startsWith(eraPrefix))
+                             .map(key => {
+                               const parts = key.split('-');
+                               const idx = parseInt(parts[parts.length - 1] || '0', 10);
+                               return idx;
+                             });
+                           handleExportTrackerTracks(trackerContextMenuPos.era!, indices);
+                           setTrackerContextMenuPos(null);
+                         }}
+                         className="context-menu-item w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors"
+                       >
+                         Download Selected ({selectedInEra})
+                       </button>
+                     );
+                   }
+                   return (
+                     <button
+                       onClick={handleTrackerExportTrack}
+                       className="context-menu-item w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors"
+                     >
+                       Download Track
+                     </button>
+                   );
+                 })()}
+             </div>
+           </div>
+         )}
 
       {activeSection === 'trackerhub' && (
         <div className="w-full px-4 py-16">
-          <header className="mb-12" style={{ position: "relative", width: "100%", minHeight: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 40px", boxSizing: "border-box", fontFamily: "IBM Plex Mono" }}>
-            
-            {/* Left side buttons */}
-            <div style={{ position: "absolute", left: "40px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "row", gap: "8px", alignItems: "center" }}>
+        <header className="mb-12" style={{ position: "relative", width: "100%", minHeight: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", boxSizing: "border-box", fontFamily: "IBM Plex Mono" }}>
+          
+          {/* Left side buttons */}
+            <div style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "row", gap: "8px", alignItems: "center" }}>
               <a
                 href="https://guns.lol/g4su"
                 target="_blank"
@@ -2170,17 +2297,18 @@ export default function App() {
                               {trackCount} Tracks
                             </p>
                           </div>
-                            <div className="flex items-center gap-2 ml-auto">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                                className="p-2 text-neutral-400 hover:text-black transition-colors cursor-pointer"
-                                title="Options"
-                              >
-                                <MoreVertical size={15} />
-                              </button>
-                            </div>
+                             <div className="flex items-center gap-2 ml-auto">
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   handleExportTrackerEra(era);
+                                 }}
+                                 className="p-2 text-neutral-400 hover:text-black transition-colors cursor-pointer"
+                                 title="Download Era"
+                               >
+                                 <Download size={15} />
+                               </button>
+                             </div>
                         </div>
 
                          <div 
@@ -2208,46 +2336,54 @@ export default function App() {
                                     }
                                   }}
                                 >
-                                 {(era.tracks || [])
-                                    .slice(0, getVisibleTrackCount(eraKey))
-                                    .map((track: any, i: number) => {
-                                     const actualIndex = i;
-                                     const trackDisplayTitle = track.name?.title || track.name?.raw || 'Unknown';
-                                     const trackSearchTitle = (track.name?.title || '').toLowerCase();
-                                     const trackQuality = track.quality || '';
-                                     const query = debouncedSearchQuery.trim().toLowerCase();
-                                     const matchesSearch = !query || trackSearchTitle.includes(query);
-                                     if (query !== "" && !matchesSearch) return null;
-                                    
-                                     return (
-                                       <div 
-                                         key={actualIndex}
-                                         onClick={(e) => handleTrackerTrackClick(era, actualIndex, e)}
-                                         onContextMenu={(e) => handleTrackerContextMenu(e, track, era, actualIndex)}
-                                          onMouseEnter={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
-                                            if (hoverTimeoutRef.current) {
-                                              clearTimeout(hoverTimeoutRef.current);
-                                              hoverTimeoutRef.current = null;
-                                            }
-                                            setHoveredTrackerTrack({
-                                              eraKey,
-                                              track,
-                                              eraIndex: idx,
-                                              trackIndex: actualIndex,
-                                              rect
-                                            });
+                                   {(era.tracks || [])
+                                       .map((track: any, originalIndex: number) => ({ track, originalIndex }))
+                                       .filter(({ track }: { track: any }) => {
+                                        const trackName = (track.name?.title || track.name?.raw || '').toLowerCase();
+                                        const query = debouncedSearchQuery.trim().toLowerCase();
+                                        if (query === "") return true;
+                                        return trackName.includes(query);
+                                       })
+                                       .slice(0, getVisibleTrackCount(eraKey))
+                                          .map(({ track, originalIndex }: { track: any, originalIndex: number }) => {
+                                          const trackKey = `${era.name || 'era'}-${originalIndex}`;
+                                          const isSelected = selectedTrackerTrackIds.has(trackKey);
+                                          const trackDisplayTitle = track.name?.title || track.name?.raw || 'Unknown';
+                                          const trackQuality = track.quality || '';
+                                        
+                                           return (
+                                            <div 
+                                            key={trackKey}
+                                             onClick={(e) => {
+                                               handleTrackerTrackClick(era, originalIndex, e);
+                                             }}
+                                            onContextMenu={(e) => handleTrackerContextMenu(e, track, era, originalIndex)}
+                                             onMouseEnter={(e) => {
+                                              const rect = e.currentTarget.getBoundingClientRect();
+                                              if (hoverTimeoutRef.current) {
+                                                clearTimeout(hoverTimeoutRef.current);
+                                                hoverTimeoutRef.current = null;
+                                              }
+                                              setHoveredTrackerTrack({
+                                                eraKey,
+                                                track,
+                                                eraIndex: idx,
+                                                trackIndex: originalIndex,
+                                                rect
+                                              });
+                                            }}
+                                           onMouseLeave={() => {
+                                            hoverTimeoutRef.current = window.setTimeout(() => {
+                                              setHoveredTrackerTrack(null);
+                                            }, 100);
                                           }}
-                                         onMouseLeave={() => {
-                                           hoverTimeoutRef.current = window.setTimeout(() => {
-                                             setHoveredTrackerTrack(null);
-                                           }, 100);
-                                         }}
-                                         className={`group relative flex items-center px-4 py-2 rounded-lg transition-all cursor-pointer track-subtle-hover`}
-                                       >
-                                         <span className={`text-sm font-mono font-bold flex items-center justify-center w-5 text-neutral-400`}>
-                                           {actualIndex + 1}
-                                         </span>
+                                          className={`group relative flex items-center px-4 py-2 rounded-lg transition-all cursor-pointer ${
+                                            isSelected ? "track-subtle-selected" : "track-subtle-hover"
+                                          }`}
+                                        >
+                                          <span className={`text-sm font-mono font-bold flex items-center justify-center w-5 text-neutral-400`}>
+                                            {originalIndex + 1}
+                                          </span>
                                           
                                             <span className={`ml-3 text-sm font-mono truncate text-neutral-700`}>
                                               {renderExplicitTitle(trackDisplayTitle)}
@@ -2257,16 +2393,16 @@ export default function App() {
                                               {trackQuality}
                                             </span>
                                           )}
-                                           <button
-                                             onClick={async (e) => {
-                                               e.stopPropagation();
-                                               let url = track.audioUrl || track.links?.[0]?.url || '';
-                                               if (!url) return;
-                                               url = await resolvePlayableUrl(url);
-                                               if (url) {
-                                                  handleExportTrack(url, trackDisplayTitle, trackQuality || 'mp3');
-                                              }
-                                            }}
+                                            <button
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                let url = track.audioUrl || track.links?.[0]?.url || '';
+                                                if (!url) return;
+                                                url = await resolvePlayableUrl(url);
+                                                if (url) {
+                                                   handleExportTrack(url, trackDisplayTitle, getFormatFromUrl(url));
+                                               }
+                                             }}
                                              className={`ml-2 p-1.5 transition-colors download-subtle text-neutral-400`}
                                             title="Download Track"
                                           >
@@ -2409,18 +2545,21 @@ export default function App() {
                 <SkipForward size={16} className="fill-current" />
               </button>
 
-              <button 
-                onClick={() => {
-                  if (activeProject && activeProject.metadata) {
-                    const track = activeProject.metadata.tracks[currentTrackIndex];
-                    if (track && track.audioUrl) {
-                      handleExportTrack(track.audioUrl, track.title, track.format);
-                    }
-                  }
-                }}
-                className="p-2 text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer"
-                title="Export Current Track"
-              >
+               <button 
+                 onClick={async () => {
+                   if (activeProject && activeProject.metadata) {
+                     const track = activeProject.metadata.tracks[currentTrackIndex];
+                     if (track && track.audioUrl) {
+                       const url = await resolvePlayableUrl(track.audioUrl);
+                       if (url) {
+                         handleExportTrack(url, track.title, track.format);
+                       }
+                     }
+                   }
+                 }}
+                 className="p-2 text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer"
+                 title="Export Current Track"
+               >
                 <FileDown size={16} className="fill-current" />
               </button>
 
@@ -2451,53 +2590,47 @@ export default function App() {
                    <X size={18} className="text-neutral-600 dark:text-neutral-300" />
                  </button>
                </div>
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="space-y-6 font-mono text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                    <div>
-                       <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Features</h3>
-                       <ul className="space-y-1">
-                         <li>Clicking the YELEAKS / TRACKERHUB changes between light and darkmode</li>
-                         <li>Swiping on the YELEAKS left will open TrackerHub and swiping right will go back to YELEAKS</li>
-                         <li>If you ctrl and left click on tracks you can select them then right click to download them</li>
-                         <li>You can add multiple projects by putting a comma between each link</li>
-                       </ul>
-                     </div>
-                     <div>
-                       <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Known Issues</h3>
-                        <ul className="space-y-1">
-                          <li>E in the explicit mark is barely visible</li>
-                          <li>In TrackerHub searching a song will sometimes show other eras that are empty</li>
-                           <li>Some songs won't play because they're in ALAC and theres no ALAC support</li>
-                        </ul>
-                     </div>
-                       <div>
-                         <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Planned Soon</h3>
+                  <div className="flex-1 overflow-y-auto p-6">
+                    <div className="space-y-6 font-mono text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                      <div>
+                         <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Features</h3>
                          <ul className="space-y-1">
-                           <li>Direct ALAC support</li>
-                           <li>Samply support</li>
-                           <li>Better Untitled integration</li>
-                           <li>Better TrackerHub integrations</li>
-                           <li>Multi + era exporting for Tracker Hub</li>
-                           <li>Better UI</li>
+                           <li>Clicking the YELEAKS / TRACKERHUB changes between light and darkmode</li>
+                           <li>Swiping on the YELEAKS left will open TrackerHub and swiping right will go back to YELEAKS</li>
+                           <li>If you ctrl and left click on tracks you can select them then right click to download them</li>
+                           <li>You can add multiple projects by putting a comma between each link</li>
+                           <li>You can search projects in YELEAKS using URLs</li>
                          </ul>
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Project Refresh</h3>
-                        <p className="text-neutral-700 dark:text-neutral-300">
-                          Every 24 hours it checks all projects and updates them. If a project isn't changed 5 times per check it'll move up to 48 hours check. After another 5 checks of it not changing it'll move up to 96 hours. If it happens again it'll move up to 168 hours where it won't go higher but if it updates after checking it will reset back to 24 hours.
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Project Cache</h3>
-                        <p className="text-neutral-700 dark:text-neutral-300">
-                          Projects that are uploaded will be cached for 24 hours so make sure you upload what your content with
-                        </p>
-                      </div>
-                  </div>
-                </div>
-             </div>
-           </div>
-         )}
+                       </div>
+                       <div>
+                         <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Known Issues</h3>
+                          <ul className="space-y-1">
+                            <li>E in the explicit mark is barely visible</li>
+                            <li>Some songs won't play because they're in ALAC and theres no ALAC support</li>
+                          </ul>
+                       </div>
+                         <div>
+                           <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Planned Soon</h3>
+                           <ul className="space-y-1">
+                             <li>Direct ALAC support</li>
+                             <li>Samply support</li>
+                             <li>Better Untitled integration</li>
+                             <li>Better TrackerHub integrations</li>
+                             <li>Multi + era exporting for Tracker Hub</li>
+                             <li>Better UI</li>
+                           </ul>
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Project Refresh</h3>
+                          <p className="text-neutral-700 dark:text-neutral-300">
+                            Every 24 hours it checks all projects and updates them. If a project isn't changed 5 times per check it'll move up to 48 hours check. After another 5 checks of it not changing it'll move up to 96 hours. If it happens again it'll move up to 168 hours where it won't go higher but if it updates after checking it will reset back to 24 hours.
+                          </p>
+                         </div>
+                     </div>
+                   </div>
+              </div>
+            </div>
+          )}
 
          {showReportModal && (
            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
