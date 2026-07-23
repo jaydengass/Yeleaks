@@ -393,6 +393,8 @@ async function startServer() {
       });
 
       if (!response.ok) {
+        const text = await response.text();
+        console.error(`Upstream audio error ${response.status}:`, text.slice(0, 200));
         return res.status(response.status).json({
           success: false,
           error: `Upstream audio error: ${response.status} ${response.statusText}`
@@ -400,12 +402,80 @@ async function startServer() {
       }
 
       const contentType = response.headers.get("content-type") || "application/octet-stream";
-      const buffer = await response.arrayBuffer();
+      if (!contentType.startsWith("audio/") && !contentType.includes("octet-stream")) {
+        const text = await response.text();
+        console.error(`Unexpected audio content-type ${contentType}:`, text.slice(0, 200));
+        return res.status(502).json({
+          success: false,
+          error: `Invalid audio content-type: ${contentType}`
+        });
+      }
+
       res.setHeader("Content-Type", contentType);
-      res.send(Buffer.from(buffer));
+      res.setHeader("Accept-Ranges", "bytes");
+      response.body?.pipe(res);
     } catch (error: any) {
       console.error("Error in /api/audio-proxy:", error.message);
       res.status(500).json({ success: false, error: error.message || "Unknown audio proxy error" });
+    }
+  });
+
+  // Generic proxy for ArtistGrid/TrackerHub to bypass CORS
+  const ARTISTGRID_HOSTS = new Set([
+    "trackerapi.artistgrid.cx",
+    "trackerapi-1.artistgrid.cx",
+    "trackerapi-2.artistgrid.cx",
+    "trackerapi-3.artistgrid.cx",
+    "fuck-unvaulted.artistgrid.cx",
+    "info.artistgrid.cx"
+  ]);
+
+  app.get("/api/proxy", async (req, res) => {
+    try {
+      const targetUrl = req.query.url as string;
+      if (!targetUrl) {
+        return res.status(400).json({ success: false, error: "Missing url parameter" });
+      }
+
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(targetUrl);
+      } catch {
+        return res.status(400).json({ success: false, error: "Invalid url parameter" });
+      }
+
+      if (!ARTISTGRID_HOSTS.has(parsedUrl.hostname)) {
+        return res.status(403).json({ success: false, error: "Proxy host not allowed" });
+      }
+
+      const response = await fetch(targetUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "application/json,text/plain,*/*"
+        },
+        redirect: "follow"
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        return res.status(response.status).json({
+          success: false,
+          error: `Proxy error: ${response.status} ${response.statusText}`,
+          body: text.slice(0, 500)
+        });
+      }
+
+      const contentType = response.headers.get("content-type") || "application/json";
+      res.setHeader("Content-Type", contentType);
+      const text = await response.text();
+      try {
+        res.json(JSON.parse(text));
+      } catch {
+        res.send(text);
+      }
+    } catch (error: any) {
+      console.error("Error in /api/proxy:", error.message);
+      res.status(500).json({ success: false, error: error.message || "Unknown proxy error" });
     }
   });
 

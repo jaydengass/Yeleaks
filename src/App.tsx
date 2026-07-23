@@ -311,7 +311,7 @@ export default function App() {
       }
       setKanyeLoading(true);
       try {
-        const baseUrl = 'https://trackerapi.artistgrid.cx/sh/12nGHPPh5dVTfLuBLVQYzC3QgPxKfvp-jgCoNccvEasM/';
+        const baseUrl = api('/api/proxy?url=' + encodeURIComponent('https://trackerapi.artistgrid.cx/sh/12nGHPPh5dVTfLuBLVQYzC3QgPxKfvp-jgCoNccvEasM/'));
         const res = await fetch(baseUrl, { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch tracker data');
         const json: any = await res.json();
@@ -543,7 +543,7 @@ export default function App() {
           ];
           for (const base of bases) {
             try {
-              const res = await fetch(`${base}/goy/dl/${match[1]}`);
+              const res = await fetch(api('/api/proxy?url=' + encodeURIComponent(`${base}/goy/dl/${match[1]}`)));
               if (res.ok) {
                 const data = await res.json();
                 if (data?.url) return data.url;
@@ -556,14 +556,14 @@ export default function App() {
     
     if (/pixeldrain\.com\/u\/([a-zA-Z0-9]+)/.test(normalized)) {
       const match = normalized.match(/pixeldrain\.com\/u\/([a-zA-Z0-9]+)/);
-      if (match) return `https://fuck-unvaulted.artistgrid.cx/${match[1]}`;
+      if (match) return api('/api/proxy?url=' + encodeURIComponent(`https://fuck-unvaulted.artistgrid.cx/${match[1]}`));
     }
     
     if (/krakenfiles\.com\/view\/([a-zA-Z0-9]+)/.test(normalized)) {
       const match = normalized.match(/krakenfiles\.com\/view\/([a-zA-Z0-9]+)/);
       if (match) {
         try {
-          const res = await fetch(`https://info.artistgrid.cx/kf/?id=${match[1]}`);
+          const res = await fetch(api('/api/proxy?url=' + encodeURIComponent(`https://info.artistgrid.cx/kf/?id=${match[1]}`)));
           if (res.ok) {
             const data = await res.json();
             if (data?.m4a) return data.m4a;
@@ -613,7 +613,7 @@ export default function App() {
     
     if (/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/.test(normalized)) {
       const match = normalized.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-      if (match) return `http://fuck-unvaulted.artistgrid.cx/gd/${match[1]}`;
+      if (match) return api('/api/proxy?url=' + encodeURIComponent(`http://fuck-unvaulted.artistgrid.cx/gd/${match[1]}`));
     }
     
     return normalized;
@@ -795,7 +795,7 @@ export default function App() {
 
   const getProxiedAudioUrl = (originalUrl: string) => {
     if (!originalUrl) return originalUrl;
-    return api('/api/audio-proxy?url=' + encodeURIComponent(originalUrl));
+    return `${WORKER_URL}/?proxy_audio=${encodeURIComponent(originalUrl)}`;
   };
 
   useEffect(() => {
@@ -2467,7 +2467,7 @@ export default function App() {
                         <ul className="space-y-1">
                           <li>E in the explicit mark is barely visible</li>
                           <li>In TrackerHub searching a song will sometimes show other eras that are empty</li>
-                          <li>Some songs won't play because they're in ALAC and there's no ALAC support</li>
+                           <li>Some songs won't play because they're in ALAC and theres no ALAC support</li>
                         </ul>
                      </div>
                        <div>
