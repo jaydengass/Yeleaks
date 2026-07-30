@@ -198,14 +198,13 @@ export default function App() {
     if (!kanyeData?.eras) return [];
     const query = debouncedSearchQuery.trim().toLowerCase();
     
-    const sortToTab: Record<string, string> = {
-      'Recent': 'Recent',
+    const tabSorts: Record<string, string> = {
       'Best Of': 'Best Of',
       'Worst Of': 'Worst Of',
       'Special': 'Special',
       'Grails/Wanted': 'Grails/Wanted',
     };
-    const targetTab = sortToTab[sortOption];
+    const targetTab = tabSorts[sortOption];
     
     let sourceEras = kanyeData.eras;
     
@@ -223,34 +222,26 @@ export default function App() {
       });
     });
     
-    if (eras.length > 0 && sortOption !== 'Recent' && !targetTab) {
+    if (eras.length > 0) {
       eras = eras.map((era: any) => {
-        const tracks = era.tracks || [];
-        tracks.sort((a: any, b: any) => {
-          const aDate = a.file_date || a.leak_date || '';
-          const bDate = b.file_date || b.leak_date || '';
-          const aQuality = a.quality || '';
-          const bQuality = b.quality || '';
-          const aTitle = (a.name?.title || a.name?.raw || '').toLowerCase();
-          const bTitle = (b.name?.title || b.name?.raw || '').toLowerCase();
-          
-          switch (sortOption) {
-            case 'Best Of':
-              return bQuality.localeCompare(aQuality);
-            case 'Worst Of':
-              return aQuality.localeCompare(bQuality);
-            case 'Special':
-              return aTitle.localeCompare(bTitle);
-            case 'Grails/Wanted':
-              return (a.available_length || '').localeCompare(b.available_length || '');
-            case 'Unwanted':
-              return (b.available_length || '').localeCompare(a.available_length || '');
-            case 'AI':
-              return aTitle.localeCompare(bTitle);
-            default:
-              return bDate.localeCompare(aDate);
-          }
-        });
+        const tracks = [...(era.tracks || [])];
+        if (sortOption === 'Recent' || sortOption === 'AI') {
+          tracks.sort((a: any, b: any) => {
+            const aDate = a.file_date || a.leak_date || '';
+            const bDate = b.file_date || b.leak_date || '';
+            return bDate.localeCompare(aDate);
+          });
+        } else if (sortOption === 'Best Of') {
+          tracks.sort((a: any, b: any) => (b.quality || '').localeCompare(a.quality || ''));
+        } else if (sortOption === 'Worst Of') {
+          tracks.sort((a: any, b: any) => (a.quality || '').localeCompare(b.quality || ''));
+        } else if (sortOption === 'Special') {
+          tracks.sort((a: any, b: any) => (a.name?.title || a.name?.raw || '').toLowerCase().localeCompare((b.name?.title || b.name?.raw || '').toLowerCase()));
+        } else if (sortOption === 'Grails/Wanted') {
+          tracks.sort((a: any, b: any) => (a.available_length || '').localeCompare(b.available_length || ''));
+        } else if (sortOption === 'Unwanted') {
+          tracks.sort((a: any, b: any) => (b.available_length || '').localeCompare(a.available_length || ''));
+        }
         return { ...era, tracks };
       });
     }
@@ -2632,47 +2623,47 @@ export default function App() {
         {activeProject && activeProject.metadata && (
           <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl px-3">
             {isTrackerHubProject(activeProjectId) ? (
-              <div className="relative bg-neutral-900/95 backdrop-blur-md text-white border border-neutral-800 shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-neutral-700">
-                  <div className="h-full transition-all duration-100" style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%`, backgroundColor: 'white' }} />
+              <div className={`relative backdrop-blur-md border shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden ${isDarkMode ? 'bg-neutral-900/95 text-white border-neutral-800' : 'bg-white text-neutral-900 border-neutral-200'}`}>
+                <div className={`absolute top-0 left-0 right-0 h-1 ${isDarkMode ? 'bg-neutral-700' : 'bg-neutral-200'}`}>
+                  <div className="h-full transition-all duration-100" style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%`, backgroundColor: isDarkMode ? 'white' : 'black' }} />
                   <input type="range" min="0" max={trackDuration || 100} step="0.1" value={currentTime} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Seek track" />
                 </div>
                 <div className="flex items-center min-w-0 gap-4 mt-0.5">
-                  <div className="relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border border-neutral-800 bg-neutral-950 flex items-center justify-center shadow-xs">
+                  <div className={`relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border flex items-center justify-center shadow-xs ${isDarkMode ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-neutral-100'}`}>
                     {activeProject.metadata.artworkUrl ? (
                       <img src={activeProject.metadata.artworkUrl} alt={activeProject.title} referrerPolicy="no-referrer" loading="lazy" className="w-full h-full object-cover" />
                     ) : (
-                      <Music size={20} className="text-neutral-600" />
+                      <Music size={20} className={isDarkMode ? 'text-neutral-600' : 'text-neutral-400'} />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-sm font-sans font-bold text-white tracking-wide truncate uppercase leading-tight">
+                    <h4 className={`text-sm font-sans font-bold tracking-wide truncate uppercase leading-tight ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>
                       {renderExplicitTitle(activeProject.metadata.tracks[currentTrackIndex].title)}
                     </h4>
-                    <p className="text-xs font-mono text-neutral-400 mt-0.5 truncate uppercase tracking-widest leading-none">
+                    <p className={`text-xs font-mono mt-0.5 truncate uppercase tracking-widest leading-none ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                       {activeProject.metadata.title || activeProject.title}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={handlePrevTrack} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Previous">
+                  <button onClick={handlePrevTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Previous">
                     <SkipBack size={16} className="fill-current" />
                   </button>
                   <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-neutral-500 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
                     {isPlaying ? <Pause size={14} className="fill-current text-white" /> : <Play size={14} className="fill-current text-white ml-0.5" />}
                   </button>
-                  <button onClick={handleNextTrack} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Next">
+                  <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                     <SkipForward size={16} className="fill-current" />
                   </button>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={handleLyricsToggle} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Lyrics">
+                  <button onClick={handleLyricsToggle} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Lyrics">
                     <Mic size={16} />
                   </button>
-                  <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className="p-2 text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer" title="Download Track">
+                  <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-700'}`} title="Download Track">
                     <FileDown size={16} className="fill-current" />
                   </button>
-                  <button onClick={handleUntitledLink} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Open Track">
+                  <button onClick={handleUntitledLink} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Open Track">
                     <ExternalLink size={16} className="fill-current" />
                   </button>
                 </div>
@@ -2704,7 +2695,7 @@ export default function App() {
                   <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
                     <SkipBack size={16} className="fill-current" />
                   </button>
-                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-neutral-400 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-neutral-500 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
                     {isPlaying ? <Pause size={14} className="fill-current text-white" /> : <Play size={14} className="fill-current text-white ml-0.5" />}
                   </button>
                   <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
@@ -2723,15 +2714,15 @@ export default function App() {
         )}
         
         {isTrackerHubProject(activeProjectId) && showLyricsPanel && activeProject?.metadata && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
-            <div className="bg-neutral-900 border border-neutral-700 shadow-2xl rounded-2xl p-4 max-h-64 overflow-y-auto">
+          <div className="fixed bottom-24 right-4 z-50 w-64 aspect-[3/4]">
+            <div className={`h-full rounded-2xl border shadow-2xl p-4 overflow-y-auto ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-white">Lyrics</h3>
-                <button onClick={() => setShowLyricsPanel(false)} className="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer text-neutral-400">
+                <h3 className={`text-xs font-mono font-bold uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>Lyrics</h3>
+                <button onClick={() => setShowLyricsPanel(false)} className={`p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   <X size={14} />
                 </button>
               </div>
-              <div className="text-xs font-mono leading-relaxed text-neutral-300 whitespace-pre-wrap">
+              <div className={`text-xs font-mono leading-relaxed whitespace-pre-wrap ${isDarkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
                 {lyricsLoading ? 'Loading lyrics...' : lyricsText || 'No lyrics found'}
               </div>
             </div>
