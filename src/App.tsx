@@ -10,9 +10,7 @@ import {
 const WORKER_URL = "https://proxy.jayden-gass10.workers.dev";
 
 import { api } from './config.ts';
-import { Client } from 'lrclib-api';
-
-const lrclibClient = new Client();
+import "@uimaxbai/am-lyrics/am-lyrics.js";
 
 const workerPost = async (body: any) => {
   const res = await fetch(WORKER_URL, {
@@ -181,10 +179,10 @@ export default function App() {
     setShowUpdateModal(false);
   };
   const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
-  const [sortOption, setSortOption] = useState<string>('Recent');
+  const [sortOption, setSortOption] = useState<string>('Unreleased');
   const [showLyricsPanel, setShowLyricsPanel] = useState<boolean>(false);
-  const [lyricsText, setLyricsText] = useState<string | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState<boolean>(false);
+  const amLyricsRef = useRef<any>(null);
   const [activeSection, setActiveSection] = useState<'yeleaks' | 'trackerhub'>('yeleaks');
   const [showNotification, setShowNotification] = useState<boolean>(false);
   const [notificationData, setNotificationData] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -199,6 +197,8 @@ export default function App() {
     const query = debouncedSearchQuery.trim().toLowerCase();
     
     const tabSorts: Record<string, string> = {
+      'Unreleased': 'Unreleased',
+      'Released': 'Released',
       'Recent': 'Recent',
       'Best Of': 'Best Of',
       'Worst Of': 'Worst Of',
@@ -223,17 +223,15 @@ export default function App() {
       });
     });
     
-    if (eras.length > 0) {
+    if (eras.length > 0 && !targetTab) {
       eras = eras.map((era: any) => {
         const tracks = [...(era.tracks || [])];
-        if (sortOption === 'Recent') {
+        if (sortOption === 'Recent' || sortOption === 'AI') {
           tracks.sort((a: any, b: any) => {
             const aDate = a.file_date || a.leak_date || '';
             const bDate = b.file_date || b.leak_date || '';
             return bDate.localeCompare(aDate);
           });
-        } else if (sortOption === 'AI') {
-          tracks.sort((a: any, b: any) => (a.name?.title || a.name?.raw || '').toLowerCase().localeCompare((b.name?.title || b.name?.raw || '').toLowerCase()));
         } else if (sortOption === 'Best Of') {
           tracks.sort((a: any, b: any) => (b.quality || '').localeCompare(a.quality || ''));
         } else if (sortOption === 'Worst Of') {
@@ -1634,41 +1632,34 @@ export default function App() {
     return 'mp3';
   };
 
-  const fetchLyrics = async (title: string, artist: string) => {
-    setLyricsLoading(true);
-    setLyricsText(null);
-    try {
-      console.log('[Lyrics] Searching for:', title, 'by', artist);
-      const results = await lrclibClient.searchLyrics({ track_name: title, artist_name: artist });
-      console.log('[Lyrics] Results:', results.length);
-      if (results.length > 0) {
-        const first = results[0];
-        console.log('[Lyrics] First result:', { instrumental: first.instrumental, hasPlainLyrics: !!first.plainLyrics });
-        if (!first.instrumental && first.plainLyrics) {
-          setLyricsText(first.plainLyrics);
-        } else {
-          setLyricsText(null);
-        }
-      } else {
-        setLyricsText(null);
-      }
-    } catch (e) {
-      console.error('[Lyrics] Error:', e);
-      setLyricsText(null);
-    } finally {
-      setLyricsLoading(false);
-    }
-  };
-
   const handleLyricsToggle = async () => {
     const next = !showLyricsPanel;
     setShowLyricsPanel(next);
-    setLyricsText(null);
     if (next && activeProject?.metadata?.tracks?.[currentTrackIndex]) {
       const track = activeProject.metadata.tracks[currentTrackIndex];
       const title = track.title || track.name?.title || track.name?.raw || '';
       const artist = activeProject.metadata.title || activeProject.title || 'Unknown';
-      await fetchLyrics(title, artist);
+      setLyricsLoading(true);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const el = amLyricsRef.current;
+        if (el) {
+          const clean = (s: string) => s.replace(/\s*[\(\[].*?[\)\]]/g, "").replace(/\s+/g, " ").trim();
+          const cleanTitle = clean(title);
+          const cleanArtist = clean(artist);
+          el.songTitle = cleanTitle || title;
+          el.songArtist = cleanArtist || artist;
+          el.query = [cleanTitle || title, cleanArtist || artist].filter(Boolean).join(" - ");
+          el.highlightColor = "#ffffff";
+          el.autoScroll = true;
+          el.interpolate = true;
+          await el.fetchLyrics();
+        }
+      } catch {
+        // lyrics fetch failed; panel will show empty state
+      } finally {
+        setLyricsLoading(false);
+      }
     }
   };
 
@@ -2375,22 +2366,22 @@ export default function App() {
                  <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400 hidden md:inline">
                    {sortOption}
                  </span>
-                 {showSortDropdown && (
-                   <div className="absolute top-full left-0 mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[140px] z-50">
-                     {['Recent', 'Best Of', 'Worst Of', 'Special', 'Grails/Wanted', 'Unwanted', 'AI'].map((option) => (
-                       <button
-                         key={option}
-                         onClick={() => {
-                           setSortOption(option);
-                           setShowSortDropdown(false);
-                         }}
-                         className="w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-                       >
-                         {option}
-                       </button>
-                     ))}
-                   </div>
-                 )}
+                  {showSortDropdown && (
+                    <div className="absolute top-full left-0 mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[140px] z-50">
+                      {['Unreleased', 'Released', 'Recent', 'Best Of', 'Worst Of', 'Special', 'Grails/Wanted', 'Unwanted', 'AI'].map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => {
+                            setSortOption(option);
+                            setShowSortDropdown(false);
+                          }}
+                          className="w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                </div>
              )}
           </div>
@@ -2727,15 +2718,15 @@ export default function App() {
         
         {isTrackerHubProject(activeProjectId) && showLyricsPanel && activeProject?.metadata && (
           <div className="fixed bottom-24 right-4 z-50 w-64 aspect-[3/4]">
-            <div className={`h-full rounded-2xl border shadow-2xl p-4 overflow-y-auto ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}>
-              <div className="flex items-center justify-between mb-2">
+            <div className={`h-full rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}>
+              <div className="flex items-center justify-between p-4">
                 <h3 className={`text-xs font-mono font-bold uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>Lyrics</h3>
                 <button onClick={() => setShowLyricsPanel(false)} className={`p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   <X size={14} />
                 </button>
               </div>
-              <div className={`text-xs font-mono leading-relaxed whitespace-pre-wrap ${isDarkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
-                {lyricsLoading ? 'Loading lyrics...' : lyricsText || 'No lyrics found'}
+              <div className="flex-1 min-h-0 px-4 pb-4">
+                <am-lyrics ref={amLyricsRef} className="h-full w-full" />
               </div>
             </div>
           </div>
@@ -2743,15 +2734,15 @@ export default function App() {
         
         {!isTrackerHubProject(activeProjectId) && showLyricsPanel && activeProject?.metadata && (
           <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
-            <div className="bg-white border border-neutral-200 shadow-2xl rounded-2xl p-4 max-h-64 overflow-y-auto">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-neutral-900">Lyrics</h3>
-                <button onClick={() => setShowLyricsPanel(false)} className="p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer text-neutral-500">
+            <div className={`rounded-2xl border shadow-2xl overflow-hidden ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}>
+              <div className="flex items-center justify-between p-4">
+                <h3 className={`text-xs font-mono font-bold uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>Lyrics</h3>
+                <button onClick={() => setShowLyricsPanel(false)} className={`p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   <X size={14} />
                 </button>
               </div>
-              <div className="text-xs font-mono leading-relaxed text-neutral-700 whitespace-pre-wrap">
-                {lyricsLoading ? 'Loading lyrics...' : lyricsText || 'No lyrics found'}
+              <div className="px-4 pb-4 h-64">
+                <am-lyrics ref={amLyricsRef} className="h-full w-full" />
               </div>
             </div>
           </div>
