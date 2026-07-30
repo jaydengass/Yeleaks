@@ -2291,33 +2291,36 @@ export default function App() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-60 px-4 py-3 text-xs font-mono uppercase tracking-wider bg-white border border-neutral-200 rounded-lg text-neutral-700 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300"
             />
-            {activeSection === 'trackerhub' && (
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  className="px-3 py-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
-                  title="Sort"
-                >
-                  <ChevronDown size={16} />
-                </button>
-                {showSortDropdown && (
-                  <div className="absolute top-full left-0 mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[140px] z-50">
-                    {['Recent', 'Best Of', 'Worst Of', 'Special', 'Grails/Wanted', 'Unwanted', 'AI'].map((option) => (
-                      <button
-                        key={option}
-                        onClick={() => {
-                          setSortOption(option);
-                          setShowSortDropdown(false);
-                        }}
-                        className="w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+             {activeSection === 'trackerhub' && (
+               <div style={{ position: "relative" }} className="flex items-center gap-1">
+                 <button
+                   onClick={() => setShowSortDropdown(!showSortDropdown)}
+                   className="px-3 py-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
+                   title="Sort"
+                 >
+                   <ChevronDown size={16} />
+                 </button>
+                 <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400 hidden md:inline">
+                   {sortOption}
+                 </span>
+                 {showSortDropdown && (
+                   <div className="absolute top-full left-0 mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[140px] z-50">
+                     {['Recent', 'Best Of', 'Worst Of', 'Special', 'Grails/Wanted', 'Unwanted', 'AI'].map((option) => (
+                       <button
+                         key={option}
+                         onClick={() => {
+                           setSortOption(option);
+                           setShowSortDropdown(false);
+                         }}
+                         className="w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+                       >
+                         {option}
+                       </button>
+                     ))}
+                   </div>
+                 )}
+               </div>
+             )}
           </div>
 
            {/* Kanye West tracker data */}
