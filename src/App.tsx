@@ -199,6 +199,7 @@ export default function App() {
     const query = debouncedSearchQuery.trim().toLowerCase();
     
     const tabSorts: Record<string, string> = {
+      'Recent': 'Recent',
       'Best Of': 'Best Of',
       'Worst Of': 'Worst Of',
       'Special': 'Special',
@@ -225,12 +226,14 @@ export default function App() {
     if (eras.length > 0) {
       eras = eras.map((era: any) => {
         const tracks = [...(era.tracks || [])];
-        if (sortOption === 'Recent' || sortOption === 'AI') {
+        if (sortOption === 'Recent') {
           tracks.sort((a: any, b: any) => {
             const aDate = a.file_date || a.leak_date || '';
             const bDate = b.file_date || b.leak_date || '';
             return bDate.localeCompare(aDate);
           });
+        } else if (sortOption === 'AI') {
+          tracks.sort((a: any, b: any) => (a.name?.title || a.name?.raw || '').toLowerCase().localeCompare((b.name?.title || b.name?.raw || '').toLowerCase()));
         } else if (sortOption === 'Best Of') {
           tracks.sort((a: any, b: any) => (b.quality || '').localeCompare(a.quality || ''));
         } else if (sortOption === 'Worst Of') {
@@ -1630,9 +1633,12 @@ export default function App() {
     setLyricsLoading(true);
     setLyricsText(null);
     try {
+      console.log('[Lyrics] Searching for:', title, 'by', artist);
       const results = await lrclibClient.searchLyrics({ track_name: title, artist_name: artist });
+      console.log('[Lyrics] Results:', results.length);
       if (results.length > 0) {
         const first = results[0];
+        console.log('[Lyrics] First result:', { instrumental: first.instrumental, hasPlainLyrics: !!first.plainLyrics });
         if (!first.instrumental && first.plainLyrics) {
           setLyricsText(first.plainLyrics);
         } else {
@@ -1641,7 +1647,8 @@ export default function App() {
       } else {
         setLyricsText(null);
       }
-    } catch {
+    } catch (e) {
+      console.error('[Lyrics] Error:', e);
       setLyricsText(null);
     } finally {
       setLyricsLoading(false);
@@ -2649,8 +2656,8 @@ export default function App() {
                   <button onClick={handlePrevTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Previous">
                     <SkipBack size={16} className="fill-current" />
                   </button>
-                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-neutral-500 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
-                    {isPlaying ? <Pause size={14} className="fill-current text-white" /> : <Play size={14} className="fill-current text-white ml-0.5" />}
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" style={{ backgroundColor: '#737373', color: 'white' }} title={isPlaying ? "Pause" : "Play"}>
+                    {isPlaying ? <Pause size={14} style={{ color: 'white' }} /> : <Play size={14} style={{ color: 'white', marginLeft: '2px' }} />}
                   </button>
                   <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                     <SkipForward size={16} className="fill-current" />
@@ -2695,8 +2702,8 @@ export default function App() {
                   <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
                     <SkipBack size={16} className="fill-current" />
                   </button>
-                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-neutral-500 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
-                    {isPlaying ? <Pause size={14} className="fill-current text-white" /> : <Play size={14} className="fill-current text-white ml-0.5" />}
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" style={{ backgroundColor: '#737373', color: 'white' }} title={isPlaying ? "Pause" : "Play"}>
+                    {isPlaying ? <Pause size={14} style={{ color: 'white' }} /> : <Play size={14} style={{ color: 'white', marginLeft: '2px' }} />}
                   </button>
                   <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
                     <SkipForward size={16} className="fill-current" />
