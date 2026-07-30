@@ -1224,9 +1224,9 @@ export default function App() {
       
       if (urls.length === 0) return;
 
-      const invalidUrls = urls.filter(url => !url.startsWith('https://untitled.stream/'));
+      const invalidUrls = urls.filter(url => !url.startsWith('https://untitled.stream/') && !url.startsWith('https://unrlsd.app/'));
       if (invalidUrls.length > 0) {
-        triggerNotification('Only https://untitled.stream/ links are allowed.', 'error');
+        triggerNotification('Only https://untitled.stream/ and https://unrlsd.app/ links are allowed.', 'error');
         return;
       }
 
@@ -1844,7 +1844,7 @@ export default function App() {
               {showAddDropdown && (
                 <input
                   type="text"
-                    placeholder="[UNTITLED]"
+                     placeholder="[UNTITLED] / [UNRLSD]"
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
                   onKeyDown={(e) => {
