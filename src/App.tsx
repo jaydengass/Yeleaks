@@ -2008,9 +2008,14 @@ export default function App() {
                                 </span>
                                 
                                  <span className={`ml-3 text-sm font-mono truncate text-neutral-700`} style={{ color: isSelected ? 'var(--text-secondary)' : undefined }}>
-                                    {renderExplicitTitle(track.title)}
-                                  </span>
-                                  {track.format && (
+                                     {renderExplicitTitle(track.title)}
+                                   </span>
+                                   {!track.date && (
+                                     <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500">
+                                       [UNRLSD]
+                                     </span>
+                                   )}
+                                   {track.format && (
                                     <span className={`ml-auto text-[12px] font-mono uppercase tracking-wider text-neutral-500`}>
                                       {track.format}
                                     </span>
@@ -2350,8 +2355,9 @@ export default function App() {
                                           .map(({ track, originalIndex }: { track: any, originalIndex: number }) => {
                                           const trackKey = `${era.name || 'era'}-${originalIndex}`;
                                           const isSelected = selectedTrackerTrackIds.has(trackKey);
-                                          const trackDisplayTitle = track.name?.title || track.name?.raw || 'Unknown';
-                                          const trackQuality = track.quality || '';
+                                           const trackDisplayTitle = track.name?.title || track.name?.raw || 'Unknown';
+                                           const trackQuality = track.quality || '';
+                                           const isUnreleased = !track.leak_date && !track.file_date;
                                         
                                            return (
                                             <div 
@@ -2387,10 +2393,15 @@ export default function App() {
                                             {originalIndex + 1}
                                           </span>
                                           
-                                             <span className={`flex-1 ml-3 text-sm font-mono truncate text-neutral-700`}>
-                                                 {renderExplicitTitle(trackDisplayTitle)}
-                                             </span>
-                                            {trackQuality && (
+                                              <span className={`flex-1 ml-3 text-sm font-mono truncate text-neutral-700`}>
+                                                  {renderExplicitTitle(trackDisplayTitle)}
+                                              </span>
+                                              {isUnreleased && (
+                                                <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500">
+                                                  [UNRLSD]
+                                                </span>
+                                              )}
+                                             {trackQuality && (
                                               <span className="text-[12px] font-mono uppercase tracking-wider text-neutral-500">
                                                 {trackQuality}
                                               </span>
