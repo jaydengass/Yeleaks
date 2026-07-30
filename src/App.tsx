@@ -2658,8 +2658,8 @@ export default function App() {
                   <button onClick={handlePrevTrack} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Previous">
                     <SkipBack size={16} className="fill-current" />
                   </button>
-                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
-                    {isPlaying ? <Pause size={14} className="fill-current text-black" /> : <Play size={14} className="fill-current text-black ml-0.5" />}
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-neutral-500 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
+                    {isPlaying ? <Pause size={14} className="fill-current text-white" /> : <Play size={14} className="fill-current text-white ml-0.5" />}
                   </button>
                   <button onClick={handleNextTrack} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Next">
                     <SkipForward size={16} className="fill-current" />
@@ -2704,8 +2704,8 @@ export default function App() {
                   <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
                     <SkipBack size={16} className="fill-current" />
                   </button>
-                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
-                    {isPlaying ? <Pause size={14} className="fill-current text-white" /> : <Play size={14} className="fill-current text-white ml-0.5" />}
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-neutral-400 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
+                    {isPlaying ? <Pause size={14} className="fill-current text-black" /> : <Play size={14} className="fill-current text-black ml-0.5" />}
                   </button>
                   <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
                     <SkipForward size={16} className="fill-current" />
