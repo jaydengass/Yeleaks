@@ -1946,7 +1946,7 @@ export default function App() {
                             className="p-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 rounded border border-neutral-200 text-[10px] font-mono tracking-widest uppercase transition-colors flex items-center gap-1 font-bold whitespace-nowrap"
                             title="Open in Official App"
                           >
-                             <span>UNTITLED LINK</span>
+                              <span>{project.url?.includes('unrlsd.app') ? '[UNRLSD] Link' : 'UNTITLED LINK'}</span>
                             <ExternalLink size={11} />
                           </a>
                        </div>
@@ -2010,11 +2010,6 @@ export default function App() {
                                  <span className={`ml-3 text-sm font-mono truncate text-neutral-700`} style={{ color: isSelected ? 'var(--text-secondary)' : undefined }}>
                                      {renderExplicitTitle(track.title)}
                                    </span>
-                                   {!track.date && (
-                                     <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500">
-                                       [UNRLSD]
-                                     </span>
-                                   )}
                                    {track.format && (
                                     <span className={`ml-auto text-[12px] font-mono uppercase tracking-wider text-neutral-500`}>
                                       {track.format}
@@ -2357,7 +2352,6 @@ export default function App() {
                                           const isSelected = selectedTrackerTrackIds.has(trackKey);
                                            const trackDisplayTitle = track.name?.title || track.name?.raw || 'Unknown';
                                            const trackQuality = track.quality || '';
-                                           const isUnreleased = !track.leak_date && !track.file_date;
                                         
                                            return (
                                             <div 
@@ -2396,11 +2390,6 @@ export default function App() {
                                               <span className={`flex-1 ml-3 text-sm font-mono truncate text-neutral-700`}>
                                                   {renderExplicitTitle(trackDisplayTitle)}
                                               </span>
-                                              {isUnreleased && (
-                                                <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500">
-                                                  [UNRLSD]
-                                                </span>
-                                              )}
                                              {trackQuality && (
                                               <span className="text-[12px] font-mono uppercase tracking-wider text-neutral-500">
                                                 {trackQuality}
