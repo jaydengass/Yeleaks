@@ -4,7 +4,7 @@ import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Shuffle, Repeat,
   ChevronDown, ChevronUp, Music, AlertCircle, RefreshCw, Trash2,
   MoreHorizontal, MoreVertical, Menu, Download, FileDown, GripVertical,
-  Info, Flag
+  Info, Flag, Mic
 } from "lucide-react";
 
 const WORKER_URL = "https://proxy.jayden-gass10.workers.dev";
@@ -178,9 +178,8 @@ export default function App() {
     setShowUpdateModal(false);
   };
   const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
-  const closeUpdateModal = () => {
-    setShowUpdateModal(false);
-  };
+  const [sortOption, setSortOption] = useState<string>('Recent');
+  const [showLyricsPanel, setShowLyricsPanel] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<'yeleaks' | 'trackerhub'>('yeleaks');
   const [showNotification, setShowNotification] = useState<boolean>(false);
   const [notificationData, setNotificationData] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -192,17 +191,49 @@ export default function App() {
   const filteredTrackerEras = useMemo(() => {
     if (!kanyeData?.eras) return [];
     const query = debouncedSearchQuery.trim().toLowerCase();
-    if (!query) return kanyeData.eras;
-    return kanyeData.eras.filter((era: any) => {
+    let eras = !query ? kanyeData.eras : kanyeData.eras.filter((era: any) => {
       const tracks = era.tracks || [];
       if (tracks.length === 0) return false;
-    return tracks.some((track: any) => {
-      const trackTitle = (track.name?.title || '').toLowerCase();
-      const trackAlt = (track.name?.raw || '').toLowerCase();
-      return trackTitle.includes(query) || trackAlt.includes(query);
+      return tracks.some((track: any) => {
+        const trackTitle = (track.name?.title || '').toLowerCase();
+        const trackAlt = (track.name?.raw || '').toLowerCase();
+        return trackTitle.includes(query) || trackAlt.includes(query);
+      });
     });
-    });
-  }, [kanyeData, debouncedSearchQuery]);
+    
+    if (sortOption !== 'Recent' && eras.length > 0) {
+      eras = eras.map((era: any) => {
+        const sortedTracks = [...(era.tracks || [])].sort((a: any, b: any) => {
+          const aDate = a.file_date || a.leak_date || '';
+          const bDate = b.file_date || b.leak_date || '';
+          const aQuality = a.quality || '';
+          const bQuality = b.quality || '';
+          const aTitle = (a.name?.title || a.name?.raw || '').toLowerCase();
+          const bTitle = (b.name?.title || b.name?.raw || '').toLowerCase();
+          
+          switch (sortOption) {
+            case 'Best Of':
+              return bQuality.localeCompare(aQuality);
+            case 'Worst Of':
+              return aQuality.localeCompare(bQuality);
+            case 'Special':
+              return aTitle.localeCompare(bTitle);
+            case 'Grails/Wanted':
+              return (a.available_length || '').localeCompare(b.available_length || '');
+            case 'Unwanted':
+              return (b.available_length || '').localeCompare(a.available_length || '');
+            case 'AI':
+              return aTitle.localeCompare(bTitle);
+            default:
+              return bDate.localeCompare(aDate);
+          }
+        });
+        return { ...era, tracks: sortedTracks };
+      });
+    }
+    
+    return eras;
+  }, [kanyeData, debouncedSearchQuery, sortOption]);
   const [expandedEras, setExpandedEras] = useState<Set<string>>(new Set());
   const [selectedTrackerTrackIds, setSelectedTrackerTrackIds] = useState<Set<string>>(new Set());
   const [hoveredTrackerTrack, setHoveredTrackerTrack] = useState<{eraKey: string, track: any, eraIndex: number, trackIndex: number, rect: DOMRect} | null>(null);
@@ -2222,38 +2253,14 @@ export default function App() {
               >
                 <RefreshCw size={16} />
               </button>
-              <button
-                onClick={() => setShowInfoModal(true)}
-                className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
-                title="Info"
-              >
-                <Info size={16} />
-              </button>
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
-                  title="Sort"
-                >
-                  <ChevronDown size={16} />
-                </button>
-                {showSortDropdown && (
-                  <div className="absolute top-full left-0 mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[140px] z-50">
-                    {['Recent', 'Best Of', 'Worst Of', 'Special', 'Grails/Wanted', 'Unwanted', 'AI'].map((option) => (
-                      <button
-                        key={option}
-                        onClick={() => {
-                          setShowSortDropdown(false);
-                        }}
-                        className="w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+               <button
+                 onClick={() => setShowInfoModal(true)}
+                 className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
+                 title="Info"
+               >
+                 <Info size={16} />
+               </button>
+             </div>
 
             {/* Barrel slider centered */}
             <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>
@@ -2276,7 +2283,7 @@ export default function App() {
           </header>
 
           {/* Search bar centered below header */}
-          <div className="flex justify-center mb-10">
+          <div className="flex justify-center mb-10 gap-2">
             <input
               type="text"
               placeholder="SEARCH ERA/TRACK"
@@ -2284,6 +2291,33 @@ export default function App() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-60 px-4 py-3 text-xs font-mono uppercase tracking-wider bg-white border border-neutral-200 rounded-lg text-neutral-700 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300"
             />
+            {activeSection === 'trackerhub' && (
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
+                  className="px-3 py-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
+                  title="Sort"
+                >
+                  <ChevronDown size={16} />
+                </button>
+                {showSortDropdown && (
+                  <div className="absolute top-full left-0 mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[140px] z-50">
+                    {['Recent', 'Best Of', 'Worst Of', 'Special', 'Grails/Wanted', 'Unwanted', 'AI'].map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          setSortOption(option);
+                          setShowSortDropdown(false);
+                        }}
+                        className="w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
            {/* Kanye West tracker data */}
@@ -2523,106 +2557,132 @@ export default function App() {
           </div>
         )}
 
-       {activeProject && activeProject.metadata && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl px-3">
-          <div className="relative bg-neutral-900/95 backdrop-blur-md text-white border border-neutral-800 shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden">
-             <div className="absolute top-0 left-0 right-0 h-1 bg-neutral-700">
-               <div 
-                 className="h-full transition-all duration-100"
-                 style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%`, backgroundColor: 'white' }}
-              />
-              <input 
-                type="range"
-                min="0"
-                max={trackDuration || 100}
-                step="0.1"
-                value={currentTime}
-                onChange={handleSeek}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                title="Seek track"
-              />
-            </div>
-
-            <div className="flex items-center min-w-0 gap-4 mt-0.5">
-              <div className="relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border border-neutral-800 bg-neutral-950 flex items-center justify-center shadow-xs">
-                {activeProject.metadata.artworkUrl ? (
-                   <img 
-                     src={activeProject.metadata.artworkUrl} 
-                     alt={activeProject.title}
-                     referrerPolicy="no-referrer"
-                     loading="lazy"
-                     className="w-full h-full object-cover"
-                   />
-                ) : (
-                  <Music size={20} className="text-neutral-600" />
-                )}
-              </div>
-
-                <div className="min-w-0">
-                  <h4 className="text-sm font-sans font-bold text-white tracking-wide truncate uppercase leading-tight">
-                    {renderExplicitTitle(activeProject.metadata.tracks[currentTrackIndex].title)}
-                  </h4>
-                  <p className="text-xs font-mono text-neutral-400 mt-0.5 truncate uppercase tracking-widest leading-none">
-                    {activeProject.metadata.title || activeProject.title}
-                  </p>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-4 shrink-0">
-              <button 
-                onClick={handlePrevTrack}
-                className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                title="Previous Track"
-              >
-                <SkipBack size={16} className="fill-current" />
-              </button>
-
-              <button 
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm"
-                title={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? <Pause size={14} className="fill-current text-black" /> : <Play size={14} className="fill-current text-black ml-0.5" />}
-              </button>
-
-              <button 
-                onClick={handleNextTrack}
-                className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                title="Next Track"
-              >
-                <SkipForward size={16} className="fill-current" />
-              </button>
-
-               <button 
-                 onClick={async () => {
-                   if (activeProject && activeProject.metadata) {
-                     const track = activeProject.metadata.tracks[currentTrackIndex];
-                     if (track && track.audioUrl) {
-                       const url = await resolvePlayableUrl(track.audioUrl);
-                       if (url) {
-                         handleExportTrack(url, track.title, track.format);
-                       }
-                     }
-                   }
-                 }}
-                 className="p-2 text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer"
-                 title="Export Current Track"
-               >
-                <FileDown size={16} className="fill-current" />
-              </button>
-
-               <button 
-                 onClick={handleUntitledLink}
-                 className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                 title={isTrackerHubProject(activeProjectId) ? "Open Track" : "Open in Untitled"}
-               >
-                 <ExternalLink size={16} className="fill-current" />
-               </button>
-            </div>
-
+        {activeProject && activeProject.metadata && (
+         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl px-3">
+           <div className={`relative backdrop-blur-md border shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden ${isDarkMode ? 'bg-neutral-900/95 text-white border-neutral-800' : 'bg-white text-neutral-900 border-neutral-200'}`}>
+              <div className={`absolute top-0 left-0 right-0 h-1 ${isDarkMode ? 'bg-neutral-700' : 'bg-neutral-200'}`}>
+                <div 
+                  className="h-full transition-all duration-100"
+                  style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%`, backgroundColor: isDarkMode ? 'white' : 'black' }}
+               />
+               <input 
+                 type="range"
+                 min="0"
+                 max={trackDuration || 100}
+                 step="0.1"
+                 value={currentTime}
+                 onChange={handleSeek}
+                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                 title="Seek track"
+               />
              </div>
+
+             <div className="flex items-center min-w-0 gap-4 mt-0.5">
+               <div className={`relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border flex items-center justify-center shadow-xs ${isDarkMode ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-neutral-100'}`}>
+                 {activeProject.metadata.artworkUrl ? (
+                    <img 
+                      src={activeProject.metadata.artworkUrl} 
+                      alt={activeProject.title}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                 ) : (
+                   <Music size={20} className={isDarkMode ? 'text-neutral-600' : 'text-neutral-400'} />
+                 )}
+               </div>
+
+                 <div className="min-w-0">
+                   <h4 className={`text-sm font-sans font-bold tracking-wide truncate uppercase leading-tight ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>
+                     {renderExplicitTitle(activeProject.metadata.tracks[currentTrackIndex].title)}
+                   </h4>
+                   <p className={`text-xs font-mono mt-0.5 truncate uppercase tracking-widest leading-none ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                     {activeProject.metadata.title || activeProject.title}
+                   </p>
+                 </div>
+             </div>
+
+             <div className="flex items-center gap-1 shrink-0">
+               <button 
+                 onClick={handlePrevTrack}
+                 className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
+                 title="Previous"
+               >
+                 <SkipBack size={16} className="fill-current" />
+               </button>
+
+               <button 
+                 onClick={() => setIsPlaying(!isPlaying)}
+                 className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm"
+                 title={isPlaying ? "Pause" : "Play"}
+               >
+                 {isPlaying ? <Pause size={14} className="fill-current text-black" /> : <Play size={14} className="fill-current text-black ml-0.5" />}
+               </button>
+
+               <button 
+                 onClick={handleNextTrack}
+                 className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
+                 title="Next"
+               >
+                 <SkipForward size={16} className="fill-current" />
+               </button>
+             </div>
+
+             <div className="flex items-center gap-1 shrink-0">
+               <button 
+                 onClick={() => setShowLyricsPanel(!showLyricsPanel)}
+                 className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
+                 title="Lyrics"
+               >
+                 <Mic size={16} />
+               </button>
+
+                <button 
+                  onClick={async () => {
+                    if (activeProject && activeProject.metadata) {
+                      const track = activeProject.metadata.tracks[currentTrackIndex];
+                      if (track && track.audioUrl) {
+                        const url = await resolvePlayableUrl(track.audioUrl);
+                        if (url) {
+                          handleExportTrack(url, track.title, track.format);
+                        }
+                      }
+                    }
+                  }}
+                  className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-700'}`}
+                  title="Download Track"
+                >
+                 <FileDown size={16} className="fill-current" />
+               </button>
+
+                <button 
+                  onClick={handleUntitledLink}
+                  className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
+                  title="Open Track"
+                >
+                  <ExternalLink size={16} className="fill-current" />
+                </button>
+             </div>
+
               </div>
-          )}
+               </div>
+           )}
+           
+           {showLyricsPanel && (
+             <div className="fixed bottom-24 right-8 z-50 w-80">
+               <div className={`rounded-xl border shadow-2xl p-4 ${isDarkMode ? 'bg-neutral-900/95 border-neutral-700 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`}>
+                 <div className="flex items-center justify-between mb-3">
+                   <h3 className="text-xs font-mono font-bold uppercase tracking-widest">Lyrics</h3>
+                   <button onClick={() => setShowLyricsPanel(false)} className={`p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                     <X size={14} />
+                   </button>
+                 </div>
+                 <div className={`text-xs font-mono leading-relaxed ${isDarkMode ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                   [Lyrics will appear here when available]
+                 </div>
+               </div>
+             </div>
+           )}
           
        <footer className="mt-24 text-center text-[11px] font-mono text-neutral-400 tracking-[0.3em] uppercase pb-28">
          <p>© {new Date().getFullYear()} YELEAKS</p>
