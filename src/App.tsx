@@ -403,6 +403,11 @@ export default function App() {
         const pushTabEras = (era: any, sourceTab: string) => {
           if (!rawTabErasMap[sourceTab]) rawTabErasMap[sourceTab] = [];
           rawTabErasMap[sourceTab].push(era);
+          const eraName = (era.name || '').trim().toLowerCase();
+          if (eraName === 'recent') {
+            if (!rawTabErasMap['Recent']) rawTabErasMap['Recent'] = [];
+            rawTabErasMap['Recent'].push(era);
+          }
         };
         
         if (json?.eras && Array.isArray(json.eras)) {
@@ -1661,7 +1666,7 @@ export default function App() {
     setLyricsText(null);
     if (next && activeProject?.metadata?.tracks?.[currentTrackIndex]) {
       const track = activeProject.metadata.tracks[currentTrackIndex];
-      const title = track.name?.title || track.name?.raw || '';
+      const title = track.title || track.name?.title || track.name?.raw || '';
       const artist = activeProject.metadata.title || activeProject.title || 'Unknown';
       await fetchLyrics(title, artist);
     }
@@ -2657,7 +2662,7 @@ export default function App() {
                     <SkipBack size={16} className="fill-current" />
                   </button>
                   <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" style={{ backgroundColor: '#737373', color: 'white' }} title={isPlaying ? "Pause" : "Play"}>
-                    {isPlaying ? <Pause size={14} style={{ color: 'white' }} /> : <Play size={14} style={{ color: 'white', marginLeft: '2px' }} />}
+                    {isPlaying ? <Pause size={14} className="fill-current" style={{ color: 'white' }} /> : <Play size={14} className="fill-current" style={{ color: 'white', marginLeft: '2px' }} />}
                   </button>
                   <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                     <SkipForward size={16} className="fill-current" />
@@ -2703,7 +2708,7 @@ export default function App() {
                     <SkipBack size={16} className="fill-current" />
                   </button>
                   <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" style={{ backgroundColor: '#737373', color: 'white' }} title={isPlaying ? "Pause" : "Play"}>
-                    {isPlaying ? <Pause size={14} style={{ color: 'white' }} /> : <Play size={14} style={{ color: 'white', marginLeft: '2px' }} />}
+                    {isPlaying ? <Pause size={14} className="fill-current" style={{ color: 'white' }} /> : <Play size={14} className="fill-current" style={{ color: 'white', marginLeft: '2px' }} />}
                   </button>
                   <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
                     <SkipForward size={16} className="fill-current" />
