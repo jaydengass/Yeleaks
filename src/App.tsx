@@ -165,6 +165,7 @@ export default function App() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddDropdown, setShowAddDropdown] = useState<boolean>(false);
   const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
+  const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [reportProjectId, setReportProjectId] = useState<string>('');
   const [reportText, setReportText] = useState<string>('');
@@ -172,6 +173,13 @@ export default function App() {
   const closeInfoModal = () => {
     localStorage.setItem('yeleaks_info_seen', 'true');
     setShowInfoModal(false);
+  };
+  const closeUpdateModal = () => {
+    setShowUpdateModal(false);
+  };
+  const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
+  const closeUpdateModal = () => {
+    setShowUpdateModal(false);
   };
   const [activeSection, setActiveSection] = useState<'yeleaks' | 'trackerhub'>('yeleaks');
   const [showNotification, setShowNotification] = useState<boolean>(false);
@@ -1806,6 +1814,13 @@ export default function App() {
               S
             </a>
             <button
+              onClick={() => setShowUpdateModal(true)}
+              className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
+              title="Update"
+            >
+              <RefreshCw size={16} />
+            </button>
+            <button
               onClick={() => setShowInfoModal(true)}
               className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
               title="Info"
@@ -2201,12 +2216,43 @@ export default function App() {
                 S
               </a>
               <button
+                onClick={() => setShowUpdateModal(true)}
+                className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
+                title="Update"
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
                 onClick={() => setShowInfoModal(true)}
                 className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
                 title="Info"
               >
                 <Info size={16} />
               </button>
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
+                  className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:border-neutral-300 dark:hover:border-neutral-600 transition-all cursor-pointer"
+                  title="Sort"
+                >
+                  <ChevronDown size={16} />
+                </button>
+                {showSortDropdown && (
+                  <div className="absolute top-full left-0 mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[140px] z-50">
+                    {['Recent', 'Best Of', 'Worst Of', 'Special', 'Grails/Wanted', 'Unwanted', 'AI'].map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          setShowSortDropdown(false);
+                        }}
+                        className="w-full px-3 py-1.5 text-left text-[10px] font-mono uppercase transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Barrel slider centered */}
@@ -2632,9 +2678,25 @@ export default function App() {
                    </div>
               </div>
             </div>
+           )}
+
+          {showUpdateModal && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeUpdateModal} />
+              <div className="relative w-[800px] h-[800px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl shadow-2xl flex flex-col animate-info-modal overflow-hidden">
+                <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
+                  <h2 className="text-lg font-mono font-bold uppercase tracking-widest text-neutral-900 dark:text-white">Update</h2>
+                  <button onClick={closeUpdateModal} className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer">
+                    <X size={18} className="text-neutral-600 dark:text-neutral-300" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6">
+                </div>
+              </div>
+            </div>
           )}
 
-         {showReportModal && (
+          {showReportModal && (
            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
              <div className="relative w-[200px] h-[200px] rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl flex flex-col overflow-hidden">
