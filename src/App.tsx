@@ -193,10 +193,27 @@ export default function App() {
   const [kanyeLoading, setKanyeLoading] = useState(false);
   const trackerCacheRef = useRef<any | null>(null);
   const trackerHubTempProjectRef = useRef<any | null>(null);
+  const trackerTabErasRef = useRef<Record<string, any[]>>({});
   const filteredTrackerEras = useMemo(() => {
     if (!kanyeData?.eras) return [];
     const query = debouncedSearchQuery.trim().toLowerCase();
-    let eras = !query ? kanyeData.eras : kanyeData.eras.filter((era: any) => {
+    
+    const sortToTab: Record<string, string> = {
+      'Recent': 'Recent',
+      'Best Of': 'Best Of',
+      'Worst Of': 'Worst Of',
+      'Special': 'Special',
+      'Grails/Wanted': 'Grails/Wanted',
+    };
+    const targetTab = sortToTab[sortOption];
+    
+    let sourceEras = kanyeData.eras;
+    
+    if (targetTab && trackerTabErasRef.current[targetTab]) {
+      sourceEras = trackerTabErasRef.current[targetTab];
+    }
+    
+    let eras = !query ? sourceEras : sourceEras.filter((era: any) => {
       const tracks = era.tracks || [];
       if (tracks.length === 0) return false;
       return tracks.some((track: any) => {
@@ -206,9 +223,10 @@ export default function App() {
       });
     });
     
-    if (eras.length > 0 && sortOption !== 'Recent') {
+    if (eras.length > 0 && sortOption !== 'Recent' && !targetTab) {
       eras = eras.map((era: any) => {
-        const sortedTracks = [...(era.tracks || [])].sort((a: any, b: any) => {
+        const tracks = era.tracks || [];
+        tracks.sort((a: any, b: any) => {
           const aDate = a.file_date || a.leak_date || '';
           const bDate = b.file_date || b.leak_date || '';
           const aQuality = a.quality || '';
@@ -233,7 +251,7 @@ export default function App() {
               return bDate.localeCompare(aDate);
           }
         });
-        return { ...era, tracks: sortedTracks };
+        return { ...era, tracks };
       });
     }
     
@@ -371,6 +389,7 @@ export default function App() {
         }
         
         const allErasMap: Record<string, any> = {};
+        const rawTabErasMap: Record<string, any[]> = {};
         
         const mergeEra = (era: any, sourceTab: string) => {
           const rawName = era.name || 'Unknown';
@@ -387,14 +406,21 @@ export default function App() {
           }
         };
         
+        const pushTabEras = (era: any, sourceTab: string) => {
+          if (!rawTabErasMap[sourceTab]) rawTabErasMap[sourceTab] = [];
+          rawTabErasMap[sourceTab].push(era);
+        };
+        
         if (json?.eras && Array.isArray(json.eras)) {
           for (const era of json.eras) {
             mergeEra(era, currentTab || 'Main');
+            pushTabEras(era, currentTab || 'Main');
           }
         }
         
         if (json?.tracks && Array.isArray(json.tracks)) {
           mergeEra({ name: currentTab || 'All Tracks', tracks: json.tracks }, currentTab || 'Flat');
+          pushTabEras({ name: currentTab || 'All Tracks', tracks: json.tracks }, currentTab || 'Flat');
         }
         
         const tabPromises = tabsList.map(async (tab: any) => {
@@ -405,9 +431,11 @@ export default function App() {
             if (!tabRes.ok) return null;
             const tabData: any = await tabRes.json();
             if (tabData?.eras && Array.isArray(tabData.eras)) {
+              tabData.eras.forEach((era: any) => pushTabEras(era, tab.name));
               return tabData.eras.map((era: any) => ({ era, sourceTab: tab.name }));
             }
             if (tabData?.tracks && Array.isArray(tabData.tracks)) {
+              pushTabEras({ name: tab.name, tracks: tabData.tracks }, tab.name);
               return [{ era: { name: tab.name, tracks: tabData.tracks }, sourceTab: tab.name }];
             }
             return null;
@@ -423,6 +451,8 @@ export default function App() {
             mergeEra(era, sourceTab);
           }
         }
+        
+        trackerTabErasRef.current = rawTabErasMap;
         
         const combinedEras = Object.values(allErasMap).filter((era: any) => {
           const name = (era.name || '').trim().toLowerCase();
