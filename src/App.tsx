@@ -10,6 +10,9 @@ import {
 const WORKER_URL = "https://proxy.jayden-gass10.workers.dev";
 
 import { api } from './config.ts';
+import { Client } from 'lrclib-api';
+
+const lrclibClient = new Client();
 
 const workerPost = async (body: any) => {
   const res = await fetch(WORKER_URL, {
@@ -180,6 +183,8 @@ export default function App() {
   const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
   const [sortOption, setSortOption] = useState<string>('Recent');
   const [showLyricsPanel, setShowLyricsPanel] = useState<boolean>(false);
+  const [lyricsText, setLyricsText] = useState<string | null>(null);
+  const [lyricsLoading, setLyricsLoading] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<'yeleaks' | 'trackerhub'>('yeleaks');
   const [showNotification, setShowNotification] = useState<boolean>(false);
   const [notificationData, setNotificationData] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -201,7 +206,7 @@ export default function App() {
       });
     });
     
-    if (sortOption !== 'Recent' && eras.length > 0) {
+    if (eras.length > 0 && sortOption !== 'Recent') {
       eras = eras.map((era: any) => {
         const sortedTracks = [...(era.tracks || [])].sort((a: any, b: any) => {
           const aDate = a.file_date || a.leak_date || '';
@@ -1600,6 +1605,40 @@ export default function App() {
     return 'mp3';
   };
 
+  const fetchLyrics = async (title: string, artist: string) => {
+    setLyricsLoading(true);
+    setLyricsText(null);
+    try {
+      const results = await lrclibClient.searchLyrics({ track_name: title, artist_name: artist });
+      if (results.length > 0) {
+        const first = results[0];
+        if (!first.instrumental && first.plainLyrics) {
+          setLyricsText(first.plainLyrics);
+        } else {
+          setLyricsText(null);
+        }
+      } else {
+        setLyricsText(null);
+      }
+    } catch {
+      setLyricsText(null);
+    } finally {
+      setLyricsLoading(false);
+    }
+  };
+
+  const handleLyricsToggle = async () => {
+    const next = !showLyricsPanel;
+    setShowLyricsPanel(next);
+    setLyricsText(null);
+    if (next && activeProject?.metadata?.tracks?.[currentTrackIndex]) {
+      const track = activeProject.metadata.tracks[currentTrackIndex];
+      const title = track.name?.title || track.name?.raw || '';
+      const artist = activeProject.metadata.title || activeProject.title || 'Unknown';
+      await fetchLyrics(title, artist);
+    }
+  };
+
   const handleTrackerTrackClick = async (era: any, trackIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!era) return;
@@ -2561,131 +2600,129 @@ export default function App() {
         )}
 
         {activeProject && activeProject.metadata && (
-         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl px-3">
-           <div className={`relative backdrop-blur-md border shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden ${isDarkMode ? 'bg-neutral-900/95 text-white border-neutral-800' : 'bg-white text-neutral-900 border-neutral-200'}`}>
-              <div className={`absolute top-0 left-0 right-0 h-1 ${isDarkMode ? 'bg-neutral-700' : 'bg-neutral-200'}`}>
-                <div 
-                  className="h-full transition-all duration-100"
-                  style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%`, backgroundColor: isDarkMode ? 'white' : 'black' }}
-               />
-               <input 
-                 type="range"
-                 min="0"
-                 max={trackDuration || 100}
-                 step="0.1"
-                 value={currentTime}
-                 onChange={handleSeek}
-                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                 title="Seek track"
-               />
-             </div>
-
-             <div className="flex items-center min-w-0 gap-4 mt-0.5">
-               <div className={`relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border flex items-center justify-center shadow-xs ${isDarkMode ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-neutral-100'}`}>
-                 {activeProject.metadata.artworkUrl ? (
-                    <img 
-                      src={activeProject.metadata.artworkUrl} 
-                      alt={activeProject.title}
-                      referrerPolicy="no-referrer"
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                 ) : (
-                   <Music size={20} className={isDarkMode ? 'text-neutral-600' : 'text-neutral-400'} />
-                 )}
-               </div>
-
-                 <div className="min-w-0">
-                   <h4 className={`text-sm font-sans font-bold tracking-wide truncate uppercase leading-tight ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>
-                     {renderExplicitTitle(activeProject.metadata.tracks[currentTrackIndex].title)}
-                   </h4>
-                   <p className={`text-xs font-mono mt-0.5 truncate uppercase tracking-widest leading-none ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                     {activeProject.metadata.title || activeProject.title}
-                   </p>
-                 </div>
-             </div>
-
-             <div className="flex items-center gap-1 shrink-0">
-               <button 
-                 onClick={handlePrevTrack}
-                 className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
-                 title="Previous"
-               >
-                 <SkipBack size={16} className="fill-current" />
-               </button>
-
-               <button 
-                 onClick={() => setIsPlaying(!isPlaying)}
-                 className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm"
-                 title={isPlaying ? "Pause" : "Play"}
-               >
-                 {isPlaying ? <Pause size={14} className="fill-current text-black" /> : <Play size={14} className="fill-current text-black ml-0.5" />}
-               </button>
-
-               <button 
-                 onClick={handleNextTrack}
-                 className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
-                 title="Next"
-               >
-                 <SkipForward size={16} className="fill-current" />
-               </button>
-             </div>
-
-             <div className="flex items-center gap-1 shrink-0">
-               <button 
-                 onClick={() => setShowLyricsPanel(!showLyricsPanel)}
-                 className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
-                 title="Lyrics"
-               >
-                 <Mic size={16} />
-               </button>
-
-                <button 
-                  onClick={async () => {
-                    if (activeProject && activeProject.metadata) {
-                      const track = activeProject.metadata.tracks[currentTrackIndex];
-                      if (track && track.audioUrl) {
-                        const url = await resolvePlayableUrl(track.audioUrl);
-                        if (url) {
-                          handleExportTrack(url, track.title, track.format);
-                        }
-                      }
-                    }
-                  }}
-                  className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-700'}`}
-                  title="Download Track"
-                >
-                 <FileDown size={16} className="fill-current" />
-               </button>
-
-                <button 
-                  onClick={handleUntitledLink}
-                  className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}
-                  title="Open Track"
-                >
-                  <ExternalLink size={16} className="fill-current" />
-                </button>
-             </div>
-
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl px-3">
+            {isTrackerHubProject(activeProjectId) ? (
+              <div className="relative bg-neutral-900/95 backdrop-blur-md text-white border border-neutral-800 shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-neutral-700">
+                  <div className="h-full transition-all duration-100" style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%`, backgroundColor: 'white' }} />
+                  <input type="range" min="0" max={trackDuration || 100} step="0.1" value={currentTime} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Seek track" />
+                </div>
+                <div className="flex items-center min-w-0 gap-4 mt-0.5">
+                  <div className="relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border border-neutral-800 bg-neutral-950 flex items-center justify-center shadow-xs">
+                    {activeProject.metadata.artworkUrl ? (
+                      <img src={activeProject.metadata.artworkUrl} alt={activeProject.title} referrerPolicy="no-referrer" loading="lazy" className="w-full h-full object-cover" />
+                    ) : (
+                      <Music size={20} className="text-neutral-600" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-sans font-bold text-white tracking-wide truncate uppercase leading-tight">
+                      {renderExplicitTitle(activeProject.metadata.tracks[currentTrackIndex].title)}
+                    </h4>
+                    <p className="text-xs font-mono text-neutral-400 mt-0.5 truncate uppercase tracking-widest leading-none">
+                      {activeProject.metadata.title || activeProject.title}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={handlePrevTrack} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Previous">
+                    <SkipBack size={16} className="fill-current" />
+                  </button>
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
+                    {isPlaying ? <Pause size={14} className="fill-current text-black" /> : <Play size={14} className="fill-current text-black ml-0.5" />}
+                  </button>
+                  <button onClick={handleNextTrack} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Next">
+                    <SkipForward size={16} className="fill-current" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={handleLyricsToggle} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Lyrics">
+                    <Mic size={16} />
+                  </button>
+                  <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className="p-2 text-neutral-400 hover:text-neutral-300 transition-colors cursor-pointer" title="Download Track">
+                    <FileDown size={16} className="fill-current" />
+                  </button>
+                  <button onClick={handleUntitledLink} className="p-2 text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Open Track">
+                    <ExternalLink size={16} className="fill-current" />
+                  </button>
+                </div>
               </div>
-               </div>
-           )}
-           
-           {showLyricsPanel && (
-             <div className="fixed bottom-24 right-8 z-50 w-80">
-               <div className={`rounded-xl border shadow-2xl p-4 ${isDarkMode ? 'bg-neutral-900/95 border-neutral-700 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`}>
-                 <div className="flex items-center justify-between mb-3">
-                   <h3 className="text-xs font-mono font-bold uppercase tracking-widest">Lyrics</h3>
-                   <button onClick={() => setShowLyricsPanel(false)} className={`p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                     <X size={14} />
-                   </button>
-                 </div>
-                 <div className={`text-xs font-mono leading-relaxed ${isDarkMode ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                   [Lyrics will appear here when available]
-                 </div>
-               </div>
-             </div>
-           )}
+            ) : (
+              <div className="relative bg-white backdrop-blur-md text-neutral-900 border border-neutral-200 shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-neutral-200">
+                  <div className="h-full transition-all duration-100" style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%`, backgroundColor: 'black' }} />
+                  <input type="range" min="0" max={trackDuration || 100} step="0.1" value={currentTime} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Seek track" />
+                </div>
+                <div className="flex items-center min-w-0 gap-4 mt-0.5">
+                  <div className="relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border border-neutral-200 bg-neutral-100 flex items-center justify-center shadow-xs">
+                    {activeProject.metadata.artworkUrl ? (
+                      <img src={activeProject.metadata.artworkUrl} alt={activeProject.title} referrerPolicy="no-referrer" loading="lazy" className="w-full h-full object-cover" />
+                    ) : (
+                      <Music size={20} className="text-neutral-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-sans font-bold text-neutral-900 tracking-wide truncate uppercase leading-tight">
+                      {renderExplicitTitle(activeProject.metadata.tracks[currentTrackIndex].title)}
+                    </h4>
+                    <p className="text-xs font-mono text-neutral-500 mt-0.5 truncate uppercase tracking-widest leading-none">
+                      {activeProject.metadata.title || activeProject.title}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 shrink-0">
+                  <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
+                    <SkipBack size={16} className="fill-current" />
+                  </button>
+                  <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-sm" title={isPlaying ? "Pause" : "Play"}>
+                    {isPlaying ? <Pause size={14} className="fill-current text-white" /> : <Play size={14} className="fill-current text-white ml-0.5" />}
+                  </button>
+                  <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
+                    <SkipForward size={16} className="fill-current" />
+                  </button>
+                  <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className="p-2 text-neutral-500 hover:text-neutral-700 transition-colors cursor-pointer" title="Download Track">
+                    <FileDown size={16} className="fill-current" />
+                  </button>
+                  <button onClick={handleUntitledLink} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Open Track">
+                    <ExternalLink size={16} className="fill-current" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {isTrackerHubProject(activeProjectId) && showLyricsPanel && activeProject?.metadata && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
+            <div className="bg-neutral-900 border border-neutral-700 shadow-2xl rounded-2xl p-4 max-h-64 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-white">Lyrics</h3>
+                <button onClick={() => setShowLyricsPanel(false)} className="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer text-neutral-400">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="text-xs font-mono leading-relaxed text-neutral-300 whitespace-pre-wrap">
+                {lyricsLoading ? 'Loading lyrics...' : lyricsText || 'No lyrics found'}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {!isTrackerHubProject(activeProjectId) && showLyricsPanel && activeProject?.metadata && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
+            <div className="bg-white border border-neutral-200 shadow-2xl rounded-2xl p-4 max-h-64 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-neutral-900">Lyrics</h3>
+                <button onClick={() => setShowLyricsPanel(false)} className="p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer text-neutral-500">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="text-xs font-mono leading-relaxed text-neutral-700 whitespace-pre-wrap">
+                {lyricsLoading ? 'Loading lyrics...' : lyricsText || 'No lyrics found'}
+              </div>
+            </div>
+          </div>
+        )}
           
        <footer className="mt-24 text-center text-[11px] font-mono text-neutral-400 tracking-[0.3em] uppercase pb-28">
          <p>© {new Date().getFullYear()} YELEAKS</p>
