@@ -2652,12 +2652,12 @@ export default function App() {
 
         {activeProject && activeProject.metadata && (
           <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl px-3">
-            {isTrackerHubProject(activeProjectId) ? (
-              <div className={`relative backdrop-blur-md border shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden ${isDarkMode ? 'bg-neutral-900/95 text-white border-neutral-800' : 'bg-white text-neutral-900 border-neutral-200'}`}>
-                <div className={`absolute top-0 left-0 right-0 h-1 ${isDarkMode ? 'bg-neutral-900' : 'bg-white'}`}>
-                  <div className="h-full transition-all duration-100 bg-neutral-500" style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%` }} />
-                  <input type="range" min="0" max={trackDuration || 100} step="0.1" value={currentTime} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Seek track" />
-                </div>
+             {isTrackerHubProject(activeProjectId) ? (
+               <div className={`relative border shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden ${isDarkMode ? 'bg-neutral-900 text-white border-neutral-800' : 'bg-white text-neutral-900 border-neutral-200'}`}>
+                 <div className={`absolute top-0 left-0 right-0 h-1 ${isDarkMode ? 'bg-neutral-900' : 'bg-white'}`}>
+                   <div className="h-full transition-all duration-100 bg-neutral-500" style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%` }} />
+                   <input type="range" min="0" max={trackDuration || 100} step="0.1" value={currentTime} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none" title="Seek track" />
+                 </div>
                 <div className="flex items-center min-w-0 gap-4 mt-0.5">
                   <div className={`relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border flex items-center justify-center shadow-xs ${isDarkMode ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-neutral-100'}`}>
                     {activeProject.metadata.artworkUrl ? (
