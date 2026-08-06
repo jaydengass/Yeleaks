@@ -1184,7 +1184,20 @@ export default function App() {
 
         const itemsNeedingMetadata = items.filter(p => !p.metadata);
         if (itemsNeedingMetadata.length > 0) {
-          fetchAllMetadataBatch(itemsNeedingMetadata);
+          const unrlsdProjects = itemsNeedingMetadata.filter(p => p.linkType === 'UNRLSD');
+          const otherProjects = itemsNeedingMetadata.filter(p => p.linkType !== 'UNRLSD');
+          
+          if (otherProjects.length > 0) {
+            fetchAllMetadataBatch(otherProjects);
+          }
+          
+          for (const project of unrlsdProjects) {
+            fetchMetadataForProject(project).then(updated => {
+              setRemoteProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
+            }).catch(err => {
+              console.warn(`Failed to fetch metadata for UNRLSD project ${project.id}:`, err);
+            });
+          }
         }
       } catch (e: any) {
         console.error("Load projects error:", e.message);
