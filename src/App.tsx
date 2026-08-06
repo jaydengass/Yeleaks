@@ -47,6 +47,7 @@ interface ProjectMetadata {
 interface StreamProject {
   id: string;
   url: string;
+  rawUrl?: string;
   linkType?: 'UNTITLED' | 'UNRLSD';
   metadata?: ProjectMetadata;
   isLoadingMetadata?: boolean;
@@ -574,6 +575,15 @@ export default function App() {
   }, [showMoreTracks]);
 
   const normalizePillowsUrl = (url: string) => url.replace(/pillowcase\.su/g, "pillows.su");
+
+  const normalizeUnrlsdUrl = (url: string) => {
+    if (!url || typeof url !== 'string') return url;
+    const shareMatch = url.match(/https?:\/\/share\.unrlsd\.app\/p\/([A-Za-z0-9_-]+)/);
+    if (shareMatch) {
+      return `https://unrlsd.app/library/project/${shareMatch[1]}`;
+    }
+    return url;
+  };
 
   const isLikelyAudioUrl = (url: string) => {
     if (!url || typeof url !== 'string') return false;
@@ -1156,11 +1166,13 @@ export default function App() {
         if (!json?.success) throw new Error(json?.error || 'Failed to load projects');
         const projects = Array.isArray(json.projects) ? json.projects : [];
         const items: StreamProject[] = projects.map((p: any) => {
-          const url = p.url || "";
+          const rawUrl = p.url || "";
+          const url = normalizeUnrlsdUrl(rawUrl);
           const cached = metadataCache.current[url];
           return {
             id: p._docId || url,
             url: url,
+            rawUrl: rawUrl,
             linkType: url.includes('unrlsd.app') ? 'UNRLSD' : 'UNTITLED',
             isLoadingMetadata: !cached,
             metadata: cached || undefined
@@ -1580,7 +1592,7 @@ export default function App() {
       if (url) window.open(url, '_blank');
       return;
     }
-    window.open(activeProject.url, '_blank');
+    window.open(activeProject.rawUrl || activeProject.url, '_blank');
   };
 
   const handleTrackClick = (projectId: string, trackIndex: number, e: React.MouseEvent) => {
@@ -2159,17 +2171,17 @@ ${body}
                            >
                              <Flag size={15} />
                            </button>
-                          <a 
-                            href={project.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 rounded border border-neutral-200 text-[10px] font-mono tracking-widest uppercase transition-colors flex items-center gap-1 font-bold whitespace-nowrap"
-                            title="Open in Official App"
-                          >
-                              <span>{project.url?.includes('unrlsd.app') ? '[UNRLSD] Link' : 'UNTITLED LINK'}</span>
-                            <ExternalLink size={11} />
-                          </a>
+                           <a 
+                             href={project.rawUrl || project.url}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             onClick={(e) => e.stopPropagation()}
+                             className="p-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 rounded border border-neutral-200 text-[10px] font-mono tracking-widest uppercase transition-colors flex items-center gap-1 font-bold whitespace-nowrap"
+                             title="Open in Official App"
+                           >
+                               <span>{project.url?.includes('unrlsd.app') ? '[UNRLSD] Link' : 'UNTITLED LINK'}</span>
+                             <ExternalLink size={11} />
+                           </a>
                        </div>
                   </div>
 
