@@ -2773,8 +2773,8 @@ ${body}
                    <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
                      <SkipBack size={16} className="fill-current" />
                    </button>
-                    <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
-                      {isPlaying ? <Pause size={20} className={isDarkMode ? 'text-neutral-400' : 'text-neutral-700'} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
+                    <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
+                      {isPlaying ? <Pause size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717' }} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
                     </button>
                     <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                       <SkipForward size={16} className="fill-current" />
@@ -2819,8 +2819,8 @@ ${body}
                    <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
                      <SkipBack size={16} className="fill-current" />
                    </button>
-                    <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
-                      {isPlaying ? <Pause size={20} className={isDarkMode ? 'text-neutral-400' : 'text-neutral-700'} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
+                    <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
+                      {isPlaying ? <Pause size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717' }} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
                     </button>
                     <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                       <SkipForward size={16} className="fill-current" />
