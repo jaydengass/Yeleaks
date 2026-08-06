@@ -47,7 +47,7 @@ interface ProjectMetadata {
 interface StreamProject {
   id: string;
   url: string;
-  linkType?: 'UNTITLED';
+  linkType?: 'UNTITLED' | 'UNRLSD';
   metadata?: ProjectMetadata;
   isLoadingMetadata?: boolean;
   metadataError?: string;
@@ -717,12 +717,7 @@ export default function App() {
   const getCombinedProjects = () => {
     const activeHiddenIds: string[] = JSON.parse(localStorage.getItem("yeleaks_hidden_projects") || "[]");
     return remoteProjects
-      .filter(p => !activeHiddenIds.includes(p.id))
-      .filter(p => {
-        if (!p.metadata) return true;
-        const tracks = p.metadata.tracks;
-        return !(Array.isArray(tracks) && tracks.length === 0);
-      });
+      .filter(p => !activeHiddenIds.includes(p.id));
   };
 
   const allProjects = useMemo(() => getCombinedProjects(), [remoteProjects]);
@@ -982,7 +977,6 @@ export default function App() {
       if (json && json.success && json.project) {
         if (json.project.exists === false) {
           console.log(`Project not found in worker: ${json.project.url}`);
-          await handleDeleteNotFoundProject(json.project.url);
           return {
             ...project,
             metadata: null,
@@ -1089,7 +1083,6 @@ export default function App() {
           if (projectData && projectData.project) {
             if (projectData.project.exists === false) {
               console.log(`Project not found in worker: ${projectData.project.url}`);
-              await handleDeleteNotFoundProject(projectData.project.url);
               deletedProjectIds.push(project.id);
               continue;
             }
@@ -1168,7 +1161,7 @@ export default function App() {
           return {
             id: p._docId || url,
             url: url,
-            linkType: 'UNTITLED',
+            linkType: url.includes('unrlsd.app') ? 'UNRLSD' : 'UNTITLED',
             isLoadingMetadata: !cached,
             metadata: cached || undefined
           };
@@ -2774,7 +2767,7 @@ ${body}
                      <SkipBack size={16} className="fill-current" />
                    </button>
                     <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
-                      {isPlaying ? <Pause size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717' }} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
+                      {isPlaying ? <Pause size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#737373' }} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#737373', marginLeft: '2px' }} />}
                     </button>
                     <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                       <SkipForward size={16} className="fill-current" />
@@ -2820,7 +2813,7 @@ ${body}
                      <SkipBack size={16} className="fill-current" />
                    </button>
                     <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
-                      {isPlaying ? <Pause size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717' }} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
+                      {isPlaying ? <Pause size={20} className="fill-current" style={{ color: '#737373' }} /> : <Play size={20} className="fill-current" style={{ color: '#737373', marginLeft: '2px' }} />}
                     </button>
                     <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                       <SkipForward size={16} className="fill-current" />
