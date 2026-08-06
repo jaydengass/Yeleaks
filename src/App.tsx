@@ -1089,7 +1089,11 @@ export default function App() {
         const deletedProjectIds: string[] = [];
         
         for (const project of validProjects) {
-          const projectData = json.projects.find((p: any) => p.url === project.url);
+          const projectData = json.projects.find((p: any) => {
+            const matchUrl = p.url === project.url;
+            const matchRaw = project.rawUrl && p.url === project.rawUrl;
+            return matchUrl || matchRaw;
+          });
           if (projectData && projectData.project) {
             if (projectData.project.exists === false) {
               console.log(`Project not found in worker: ${projectData.project.url}`);
