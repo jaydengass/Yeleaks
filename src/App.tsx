@@ -2773,18 +2773,18 @@ ${body}
                    <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
                      <SkipBack size={16} className="fill-current" />
                    </button>
-                    <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer" style={{ backgroundColor: '#737373' }} title={isPlaying ? "Pause" : "Play"}>
-                      {isPlaying ? <Pause size={14} className={isDarkMode ? 'text-neutral-400' : 'text-white'} /> : <Play size={14} className={isDarkMode ? 'text-neutral-400' : 'text-white'} style={{ marginLeft: '2px' }} />}
+                    <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
+                      {isPlaying ? <Pause size={20} className={isDarkMode ? 'text-neutral-400' : 'text-neutral-700'} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
                     </button>
-                    <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
+                    <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                       <SkipForward size={16} className="fill-current" />
                     </button>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={handleLyricsToggle} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Lyrics">
+                    <button onClick={handleLyricsToggle} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Lyrics">
                       <Mic size={16} />
                     </button>
-                   <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className="p-2 text-neutral-500 hover:text-neutral-700 transition-colors cursor-pointer" title="Download Track">
+                   <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-700'}`} title="Download Track">
                      <FileDown size={16} className="fill-current" />
                    </button>
                    <button onClick={handleUntitledLink} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Open Track">
@@ -2819,23 +2819,23 @@ ${body}
                    <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
                      <SkipBack size={16} className="fill-current" />
                    </button>
-                    <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer" style={{ backgroundColor: '#737373', color: 'white' }} title={isPlaying ? "Pause" : "Play"}>
-                      {isPlaying ? <Pause size={14} className="fill-current" style={{ color: 'white' }} /> : <Play size={14} className="fill-current" style={{ color: 'white', marginLeft: '2px' }} />}
+                    <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer" title={isPlaying ? "Pause" : "Play"}>
+                      {isPlaying ? <Pause size={20} className={isDarkMode ? 'text-neutral-400' : 'text-neutral-700'} /> : <Play size={20} className="fill-current" style={{ color: isDarkMode ? '#a3a3a3' : '#171717', marginLeft: '2px' }} />}
                     </button>
-                    <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
+                    <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                       <SkipForward size={16} className="fill-current" />
                     </button>
-                    <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className="p-2 text-neutral-500 hover:text-neutral-700 transition-colors cursor-pointer" title="Download Track">
+                    <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-700'}`} title="Download Track">
                       <FileDown size={16} className="fill-current" />
                     </button>
-                    <button onClick={handleUntitledLink} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Open Track">
+                    <button onClick={handleUntitledLink} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Open Track">
                       <ExternalLink size={16} className="fill-current" />
                     </button>
                   </div>
-               </div>
-             )}
-           </div>
-         )}
+                </div>
+              )}
+            </div>
+          )}
         
         {isTrackerHubProject(activeProjectId) && showLyricsPanel && activeProject?.metadata && (
           <div className="fixed bottom-24 right-4 z-50 w-64 aspect-[3/4]">
