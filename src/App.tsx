@@ -10,7 +10,9 @@ import {
 const WORKER_URL = "https://proxy.jayden-gass10.workers.dev";
 
 import { api } from './config.ts';
-import "@uimaxbai/am-lyrics/am-lyrics.js";
+import { Client } from 'lrclib-api';
+
+const lrclibClient = new Client();
 
 const workerPost = async (body: any) => {
   const res = await fetch(WORKER_URL, {
@@ -182,7 +184,8 @@ export default function App() {
   const [sortOption, setSortOption] = useState<string>('Unreleased');
   const [showLyricsPanel, setShowLyricsPanel] = useState<boolean>(false);
   const [lyricsLoading, setLyricsLoading] = useState<boolean>(false);
-  const amLyricsRef = useRef<any>(null);
+  const [syncedLines, setSyncedLines] = useState<Array<{text: string; startMs: number}>>([]);
+  const [currentLineIdx, setCurrentLineIdx] = useState<number>(-1);
   const [activeSection, setActiveSection] = useState<'yeleaks' | 'trackerhub'>('yeleaks');
   const [showNotification, setShowNotification] = useState<boolean>(false);
   const [notificationData, setNotificationData] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -1632,36 +1635,60 @@ export default function App() {
     return 'mp3';
   };
 
+  const parseLRC = (lrc: string): Array<{text: string; startMs: number}> => {
+    const lines: Array<{text: string; startMs: number}> = [];
+    const regex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]\s*(.*)/g;
+    let match;
+    while ((match = regex.exec(lrc)) !== null) {
+      const minutes = parseInt(match[1], 10);
+      const seconds = parseInt(match[2], 10);
+      const ms = parseInt(match[3].padEnd(3, "0"), 10);
+      const startMs = minutes * 60 * 1000 + seconds * 1000 + ms;
+      const text = match[4].trim();
+      if (text) lines.push({ text, startMs });
+    }
+    return lines.sort((a, b) => a.startMs - b.startMs);
+  };
+
   const handleLyricsToggle = async () => {
     const next = !showLyricsPanel;
     setShowLyricsPanel(next);
+    setSyncedLines([]);
+    setCurrentLineIdx(-1);
     if (next && activeProject?.metadata?.tracks?.[currentTrackIndex]) {
       const track = activeProject.metadata.tracks[currentTrackIndex];
       const title = track.title || track.name?.title || track.name?.raw || '';
       const artist = activeProject.metadata.title || activeProject.title || 'Unknown';
       setLyricsLoading(true);
       try {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        const el = amLyricsRef.current;
-        if (el) {
-          const clean = (s: string) => s.replace(/\s*[\(\[].*?[\)\]]/g, "").replace(/\s+/g, " ").trim();
-          const cleanTitle = clean(title);
-          const cleanArtist = clean(artist);
-          el.songTitle = cleanTitle || title;
-          el.songArtist = cleanArtist || artist;
-          el.query = [cleanTitle || title, cleanArtist || artist].filter(Boolean).join(" - ");
-          el.highlightColor = "#ffffff";
-          el.autoScroll = true;
-          el.interpolate = true;
-          await el.fetchLyrics();
+        const results = await lrclibClient.searchLyrics({ track_name: title, artist_name: artist });
+        if (results.length > 0 && !results[0].instrumental) {
+          const first = results[0];
+          const synced = first.syncedLyrics || first.plainLyrics || '';
+          const parsed = parseLRC(synced);
+          setSyncedLines(parsed);
         }
       } catch {
-        // lyrics fetch failed; panel will show empty state
+        // lyrics fetch failed
       } finally {
         setLyricsLoading(false);
       }
     }
   };
+
+  useEffect(() => {
+    if (!syncedLines.length) {
+      setCurrentLineIdx(-1);
+      return;
+    }
+    const ms = Math.floor((currentTime || 0) * 1000);
+    let idx = -1;
+    for (let i = 0; i < syncedLines.length; i++) {
+      if (syncedLines[i].startMs <= ms) idx = i;
+      else break;
+    }
+    setCurrentLineIdx(idx);
+  }, [currentTime, syncedLines]);
 
   const handleTrackerTrackClick = async (era: any, trackIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -2672,42 +2699,42 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="relative bg-white backdrop-blur-md text-neutral-900 border border-neutral-200 shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-white">
+              <div className={`relative backdrop-blur-md border shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-5 overflow-hidden ${isDarkMode ? 'bg-neutral-900/95 text-white border-neutral-800' : 'bg-white text-neutral-900 border-neutral-200'}`}>
+                <div className={`absolute top-0 left-0 right-0 h-1 ${isDarkMode ? 'bg-neutral-900' : 'bg-white'}`}>
                   <div className="h-full transition-all duration-100 bg-neutral-500" style={{ width: `${(currentTime / (trackDuration || 1)) * 100}%` }} />
                   <input type="range" min="0" max={trackDuration || 100} step="0.1" value={currentTime} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Seek track" />
                 </div>
                 <div className="flex items-center min-w-0 gap-4 mt-0.5">
-                  <div className="relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border border-neutral-200 bg-neutral-100 flex items-center justify-center shadow-xs">
+                  <div className={`relative w-[3.6rem] h-[3.6rem] rounded-md overflow-hidden shrink-0 border flex items-center justify-center shadow-xs ${isDarkMode ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-neutral-100'}`}>
                     {activeProject.metadata.artworkUrl ? (
                       <img src={activeProject.metadata.artworkUrl} alt={activeProject.title} referrerPolicy="no-referrer" loading="lazy" className="w-full h-full object-cover" />
                     ) : (
-                      <Music size={20} className="text-neutral-400" />
+                      <Music size={20} className={isDarkMode ? 'text-neutral-600' : 'text-neutral-400'} />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-sm font-sans font-bold text-neutral-900 tracking-wide truncate uppercase leading-tight">
+                    <h4 className={`text-sm font-sans font-bold tracking-wide truncate uppercase leading-tight ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>
                       {renderExplicitTitle(activeProject.metadata.tracks[currentTrackIndex].title)}
                     </h4>
-                    <p className="text-xs font-mono text-neutral-500 mt-0.5 truncate uppercase tracking-widest leading-none">
+                    <p className={`text-xs font-mono mt-0.5 truncate uppercase tracking-widest leading-none ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
                       {activeProject.metadata.title || activeProject.title}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
-                  <button onClick={handlePrevTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Previous">
+                  <button onClick={handlePrevTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Previous">
                     <SkipBack size={16} className="fill-current" />
                   </button>
                    <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer" style={{ backgroundColor: '#737373', color: 'white' }} title={isPlaying ? "Pause" : "Play"}>
                      {isPlaying ? <Pause size={14} className="fill-current" style={{ color: 'white' }} /> : <Play size={14} className="fill-current" style={{ color: 'white', marginLeft: '2px' }} />}
                    </button>
-                   <button onClick={handleNextTrack} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Next">
+                   <button onClick={handleNextTrack} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Next">
                      <SkipForward size={16} className="fill-current" />
                    </button>
-                   <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className="p-2 text-neutral-500 hover:text-neutral-700 transition-colors cursor-pointer" title="Download Track">
+                   <button onClick={async () => { if (activeProject && activeProject.metadata) { const track = activeProject.metadata.tracks[currentTrackIndex]; if (track && track.audioUrl) { const url = await resolvePlayableUrl(track.audioUrl); if (url) { handleExportTrack(url, track.title, track.format); } } } }} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-700'}`} title="Download Track">
                      <FileDown size={16} className="fill-current" />
                    </button>
-                   <button onClick={handleUntitledLink} className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer" title="Open Track">
+                   <button onClick={handleUntitledLink} className={`p-2 transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`} title="Open Track">
                      <ExternalLink size={16} className="fill-current" />
                    </button>
                  </div>
@@ -2725,8 +2752,18 @@ export default function App() {
                   <X size={14} />
                 </button>
               </div>
-              <div className="flex-1 min-h-0 px-4 pb-4">
-                <am-lyrics ref={amLyricsRef} className="h-full w-full" />
+              <div className="flex-1 min-h-0 px-4 pb-4 overflow-y-auto">
+                {lyricsLoading ? (
+                  <p className={`text-xs font-mono ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Loading lyrics...</p>
+                ) : syncedLines.length === 0 ? (
+                  <p className={`text-xs font-mono ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>No synced lyrics found</p>
+                ) : (
+                  <div className={`text-xs font-mono leading-relaxed whitespace-pre-wrap ${isDarkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                    {syncedLines.map((line, idx) => (
+                      <div key={idx} className={idx === currentLineIdx ? (isDarkMode ? 'text-white font-bold' : 'text-neutral-900 font-bold') : ''}>{line.text}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2741,8 +2778,18 @@ export default function App() {
                   <X size={14} />
                 </button>
               </div>
-              <div className="px-4 pb-4 h-64">
-                <am-lyrics ref={amLyricsRef} className="h-full w-full" />
+              <div className="px-4 pb-4 h-64 overflow-y-auto">
+                {lyricsLoading ? (
+                  <p className={`text-xs font-mono ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Loading lyrics...</p>
+                ) : syncedLines.length === 0 ? (
+                  <p className={`text-xs font-mono ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>No synced lyrics found</p>
+                ) : (
+                  <div className={`text-xs font-mono leading-relaxed whitespace-pre-wrap ${isDarkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                    {syncedLines.map((line, idx) => (
+                      <div key={idx} className={idx === currentLineIdx ? (isDarkMode ? 'text-white font-bold' : 'text-neutral-900 font-bold') : ''}>{line.text}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
