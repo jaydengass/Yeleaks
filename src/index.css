@@ -510,3 +510,9 @@ html, body, #root {
 .animate-info-modal {
   animation: info-modal-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+am-lyrics {
+  --lyplus-font-size-base: 14px;
+  --lyplus-padding-line: 4px;
+  --lyplus-padding-gap: 0.15em;
+}
