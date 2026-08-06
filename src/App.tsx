@@ -1001,6 +1001,11 @@ export default function App() {
             .map(key => rawTracks[key]);
         }
         
+        const isUnrlsd = project.url.includes('unrlsd.app');
+        if (isUnrlsd) {
+          console.log(`[UNRLSD] Individual fetch for ${project.url}: rawTracks=${rawTracks.length}, title=${json.project.title}`);
+        }
+        
         const tracks = rawTracks.map((track: any, idx: number) => {
           const titleFields = [track.title, track.name, track.filename, track.track_name, track.song_title];
           let title = titleFields.find(t => t && typeof t === 'string' && !/^track\s*\d+$/i.test(t)) || "";
@@ -1101,8 +1106,14 @@ export default function App() {
               continue;
             }
             
-            const rawTracks = projectData.project.tracks || [];
-            const tracks = rawTracks.map((track: any, idx: number) => {
+             const rawTracks = projectData.project.tracks || [];
+             const trackCount = rawTracks.length;
+             const isUnrlsd = project.url.includes('unrlsd.app');
+             if (isUnrlsd) {
+               console.log(`[UNRLSD] Batch metadata for ${project.url}: exists=${projectData.project.exists}, tracks=${trackCount}, title=${projectData.project.title}`);
+             }
+             
+             const tracks = rawTracks.map((track: any, idx: number) => {
               const titleFields = [track.title, track.name, track.filename, track.track_name, track.song_title];
               let title = titleFields.find((t: any) => t && typeof t === 'string' && !/^track\s*\d+$/i.test(t)) || "";
               
