@@ -1049,6 +1049,44 @@ export default function App() {
           isLoadingMetadata: false
         };
       }
+      
+      if (project.url.includes('unrlsd.app')) {
+        console.warn(`[UNRLSD] Worker proxy failed for ${project.url}, trying direct API fallback`);
+        const projectId = project.url.split('/').pop();
+        if (projectId) {
+          const directUrl = `https://unrlsd.app/api/project/${projectId}`;
+          const directResponse = await fetch(directUrl, {
+            headers: { "Accept": "application/json" }
+          });
+          if (directResponse.ok) {
+            const directJson = await directResponse.json();
+            if (directJson && (directJson.project || directJson)) {
+              const projectData = directJson.project || directJson;
+              if (projectData.tracks && Array.isArray(projectData.tracks)) {
+                const tracks = projectData.tracks.map((track: any, idx: number) => ({
+                  num: track.num || idx + 1,
+                  title: track.title || track.name || `Track ${idx + 1}`,
+                  date: track.date || "",
+                  audioUrl: track.audioUrl || track.url || "",
+                  format: track.format || (track.audioUrl ? track.audioUrl.split("?")[0].split(".").pop()?.toUpperCase() : "")
+                }));
+                const metadata: ProjectMetadata = {
+                  title: projectData.title || "Unknown Project",
+                  artist: projectData.artist || "Ye",
+                  tracksCount: projectData.tracksCount || tracks.length,
+                  duration: projectData.duration || "N/A",
+                  artworkUrl: projectData.artworkUrl || "",
+                  tracks,
+                  lastRefreshed: Date.now()
+                };
+                metadataCache.current[project.url] = metadata;
+                return { ...project, metadata, isLoadingMetadata: false };
+              }
+            }
+          }
+        }
+      }
+      
       throw new Error("Invalid response schema from proxy");
     } catch (e: any) {
       console.warn(`Failed to fetch metadata for ${project.id}, loading fallback:`, e.message);
